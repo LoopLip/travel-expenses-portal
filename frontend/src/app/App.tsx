@@ -18,6 +18,7 @@ export default function App() {
         <Route path="trips" element={<TripsPage />} />
         <Route path="trips/new" element={<TripFormPage />} />
         <Route path="trips/:id" element={<TripDetailsPage />} />
+        <Route path="trips/:id/edit" element={<TripFormPage />} />
         <Route path="expenses" element={<ExpensesPage />} />
         <Route path="expenses/new" element={<ExpenseFormPage />} />
         <Route path="advances" element={<AdvancesPage />} />

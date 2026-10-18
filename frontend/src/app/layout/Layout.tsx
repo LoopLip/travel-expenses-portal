@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
-  AppBar, Box, Container, Drawer, IconButton, List, ListItemButton, ListItemIcon,
+  AppBar, Box, Container, Divider, Drawer, Fade, IconButton, List, ListItemButton, ListItemIcon,
   ListItemText, Toolbar, Typography, useMediaQuery,
 } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
@@ -11,6 +11,8 @@ import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff'
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
 import PaymentsIcon from '@mui/icons-material/Payments'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
+import { DemoControls } from '@/features/demo-controls'
+import { useMotionTimeout } from '@/shared/lib'
 
 const DRAWER_WIDTH = 240
 
@@ -27,6 +29,7 @@ export default function Layout() {
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
   const [open, setOpen] = useState(false)
   const { pathname } = useLocation()
+  const motion = useMotionTimeout(250)
 
   const isActive = (to: string, end?: boolean) => (end ? pathname === to : pathname.startsWith(to))
 
@@ -48,6 +51,8 @@ export default function Layout() {
           </ListItemButton>
         ))}
       </List>
+      <Divider />
+      <DemoControls />
     </Box>
   )
 
@@ -79,7 +84,9 @@ export default function Layout() {
       <Box component="main" sx={{ flexGrow: 1, minWidth: 0 }}>
         <Toolbar />
         <Container maxWidth="lg" sx={{ py: 3 }}>
-          <Outlet />
+          <Fade key={pathname} in appear timeout={motion}>
+            <div><Outlet /></div>
+          </Fade>
         </Container>
       </Box>
     </Box>

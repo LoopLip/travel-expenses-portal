@@ -1,44 +1,53 @@
-import { Link as RouterLink } from 'react-router-dom'
-import { Button, Card, CardContent, Grid, MenuItem, Stack, TextField } from '@mui/material'
-import PageHeader from '../shared/ui/PageHeader'
-import { budgets } from '../entities/budget'
-// Лаб. №1: только вёрстка формы. Отправка и валидация появятся в следующих работах.
+﻿import { useNavigate, useParams } from 'react-router-dom'
+import { Card, CardContent } from '@mui/material'
+import { budgetApi } from '@/entities/budget'
+import { tripApi } from '@/entities/trip'
+import { userApi } from '@/entities/user'
+import { TripForm } from '@/features/trip-save'
+import { useQuery } from '@/shared/lib'
+import { PageHeader, QueryBoundary } from '@/shared/ui'
+import NotFoundPage from './NotFoundPage'
+import { ApiError } from '@/shared/api'
+
+/** Страница создания (`/trips/new`) и редактирования (`/trips/:id/edit`) командировки. */
 export default function TripFormPage() {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const editId = id ? Number(id) : undefined
+  const query = useQuery(async () => {
+    const [users, budgets] = await Promise.all([userApi.list(), budgetApi.list()])
+    try {
+      const trip = editId ? await tripApi.get(editId) : undefined
+      return { users, budgets, trip, missing: false }
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 404) return { users, budgets, trip: undefined, missing: true }
+      throw e
+    }
+  }, [editId])
+
+  if (query.data?.missing) return <NotFoundPage />
+
   return (
     <>
-      <PageHeader title="Новая заявка на командировку" subtitle="Заполните данные поездки и отправьте на согласование" />
-      <Card>
-        <CardContent>
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField label="Направление" fullWidth />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField label="Бюджет" select fullWidth defaultValue={budgets[0].id}>
-                {budgets.map((b) => (
-                  <MenuItem key={b.id} value={b.id}>{b.department} ({b.period})</MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            <Grid size={{ xs: 12 }}>
-              <TextField label="Цель поездки" fullWidth multiline minRows={2} />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <TextField label="Дата начала" type="date" fullWidth slotProps={{ inputLabel: { shrink: true } }} />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <TextField label="Дата окончания" type="date" fullWidth slotProps={{ inputLabel: { shrink: true } }} />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <TextField label="Плановая сумма, ₽" type="number" fullWidth />
-            </Grid>
-          </Grid>
-          <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
-            <Button variant="contained">Отправить на согласование</Button>
-            <Button component={RouterLink} to="/trips">Отмена</Button>
-          </Stack>
-        </CardContent>
-      </Card>
+      <PageHeader
+        title={editId ? 'Редактирование командировки' : 'Новая заявка на командировку'}
+        subtitle={editId ? 'Измените данные поездки и сохраните' : 'Заполните данные поездки и создайте заявку'}
+      />
+      <QueryBoundary query={query} isEmpty={() => false} empty={{ title: '' }} skeletonRows={5}>
+        {({ users, budgets, trip }) => (
+          <Card>
+            <CardContent>
+              <TripForm
+                trip={trip}
+                users={users}
+                budgets={budgets}
+                onSaved={(saved) => navigate(`/trips/${saved.id}`)}
+                onCancel={() => navigate(editId ? `/trips/${editId}` : '/trips')}
+              />
+            </CardContent>
+          </Card>
+        )}
+      </QueryBoundary>
     </>
   )
 }

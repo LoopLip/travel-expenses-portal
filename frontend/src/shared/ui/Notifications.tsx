@@ -1,19 +1,16 @@
-﻿import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Alert, Slide, Snackbar } from '@mui/material'
 import { useMotionTimeout } from '../lib/useMotion'
+import { NotifyContext } from './notifyContext'
+import type { Severity } from './notifyContext'
 
-type Severity = 'success' | 'error' | 'info'
 interface Message {
   key: number
   text: string
   severity: Severity
 }
-interface Notifier {
-  notify: (text: string, severity?: Severity) => void
-}
 
-const NotifyContext = createContext<Notifier>({ notify: () => undefined })
 
 /** Уведомления (snackbar): «Командировка создана», «Не удалось сохранить» и т. п. */
 export function NotificationsProvider({ children }: { children: ReactNode }) {
@@ -47,4 +44,3 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   )
 }
 
-export const useNotify = () => useContext(NotifyContext).notify

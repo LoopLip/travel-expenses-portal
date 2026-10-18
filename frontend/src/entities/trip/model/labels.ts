@@ -1,4 +1,4 @@
-import type { ChipColor } from '../../../shared/ui/StatusChip'
+﻿import type { ChipColor } from '@/shared/ui'
 import type { TripStatus } from './types'
 
 export const tripStatusLabel: Record<TripStatus, { text: string; color: ChipColor }> = {
@@ -8,3 +8,8 @@ export const tripStatusLabel: Record<TripStatus, { text: string; color: ChipColo
   rejected: { text: 'Отклонена', color: 'error' },
   completed: { text: 'Завершена', color: 'info' },
 }
+
+export const tripStatuses = Object.keys(tripStatusLabel) as TripStatus[]
+
+/** Статусы, которые не резервируют бюджет (как в backend: crud.budget_summary). */
+export const NON_RESERVING: TripStatus[] = ['draft', 'rejected']

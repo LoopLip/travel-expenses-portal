@@ -1,4 +1,4 @@
-import type { ExpenseCategory } from './types'
+﻿import type { ExpenseCategory } from './types'
 
 export const categoryLabel: Record<ExpenseCategory, string> = {
   transport: 'Транспорт',
@@ -6,3 +6,5 @@ export const categoryLabel: Record<ExpenseCategory, string> = {
   meals: 'Питание',
   other: 'Прочее',
 }
+
+export const expenseCategories = Object.keys(categoryLabel) as ExpenseCategory[]

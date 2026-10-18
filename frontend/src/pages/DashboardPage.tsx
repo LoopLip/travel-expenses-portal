@@ -1,11 +1,13 @@
 import { Link as RouterLink } from 'react-router-dom'
 import { Button, Card, CardContent, Grid, LinearProgress, List, ListItem, ListItemText, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
-import PageHeader from '../components/PageHeader'
-import StatusChip from '../components/StatusChip'
-import { advances, budgets, expenses, trips } from '../data/mock'
-import { formatDate, formatMoney, tripStatusLabel } from '../data/labels'
-
+import PageHeader from '../shared/ui/PageHeader'
+import StatusChip from '../shared/ui/StatusChip'
+import { advances } from '../entities/advance'
+import { budgets } from '../entities/budget'
+import { expenses } from '../entities/expense'
+import { trips, tripStatusLabel } from '../entities/trip'
+import { formatDate, formatMoney } from '../shared/lib/format'
 export default function DashboardPage() {
   const pending = trips.filter((t) => t.status === 'pending').length
   const upcoming = trips.filter((t) => t.status === 'approved').length

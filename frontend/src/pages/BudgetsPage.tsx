@@ -1,8 +1,8 @@
 import { Card, CardContent, Grid, LinearProgress, Typography } from '@mui/material'
-import PageHeader from '../components/PageHeader'
-import { budgets, trips } from '../data/mock'
-import { formatMoney } from '../data/labels'
-
+import PageHeader from '../shared/ui/PageHeader'
+import { budgets } from '../entities/budget'
+import { trips } from '../entities/trip'
+import { formatMoney } from '../shared/lib/format'
 export default function BudgetsPage() {
   return (
     <>

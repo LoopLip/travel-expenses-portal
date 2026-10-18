@@ -1,8 +1,10 @@
 import { Chip } from '@mui/material'
 
+export type ChipColor = 'default' | 'warning' | 'success' | 'error' | 'info'
+
 interface Props {
   text: string
-  color: 'default' | 'warning' | 'success' | 'error' | 'info'
+  color: ChipColor
 }
 
 export default function StatusChip({ text, color }: Props) {

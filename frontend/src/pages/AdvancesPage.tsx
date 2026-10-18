@@ -1,10 +1,10 @@
 import { Link as RouterLink } from 'react-router-dom'
 import { Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material'
-import PageHeader from '../components/PageHeader'
-import StatusChip from '../components/StatusChip'
-import { advances, trips } from '../data/mock'
-import { advanceStatusLabel, formatDate, formatMoney } from '../data/labels'
-
+import PageHeader from '../shared/ui/PageHeader'
+import StatusChip from '../shared/ui/StatusChip'
+import { advances, advanceStatusLabel } from '../entities/advance'
+import { trips } from '../entities/trip'
+import { formatDate, formatMoney } from '../shared/lib/format'
 export default function AdvancesPage() {
   return (
     <>

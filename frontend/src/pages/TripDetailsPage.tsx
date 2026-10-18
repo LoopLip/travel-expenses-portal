@@ -3,12 +3,14 @@ import {
   Button, Card, CardContent, Divider, Grid, List, ListItem, ListItemText, Stack, Typography,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import PageHeader from '../components/PageHeader'
-import StatusChip from '../components/StatusChip'
+import PageHeader from '../shared/ui/PageHeader'
+import StatusChip from '../shared/ui/StatusChip'
 import NotFoundPage from './NotFoundPage'
-import { advances, budgets, expenses, trips } from '../data/mock'
-import { advanceStatusLabel, categoryLabel, formatDate, formatMoney, tripStatusLabel } from '../data/labels'
-
+import { advances, advanceStatusLabel } from '../entities/advance'
+import { budgets } from '../entities/budget'
+import { expenses, categoryLabel } from '../entities/expense'
+import { trips, tripStatusLabel } from '../entities/trip'
+import { formatDate, formatMoney } from '../shared/lib/format'
 export default function TripDetailsPage() {
   const { id } = useParams()
   const trip = trips.find((t) => t.id === Number(id))

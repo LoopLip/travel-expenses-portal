@@ -1,10 +1,10 @@
 import { Link as RouterLink } from 'react-router-dom'
 import { Button, Chip, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
-import PageHeader from '../components/PageHeader'
-import { expenses, trips } from '../data/mock'
-import { categoryLabel, formatDate, formatMoney } from '../data/labels'
-
+import PageHeader from '../shared/ui/PageHeader'
+import { expenses, categoryLabel } from '../entities/expense'
+import { trips } from '../entities/trip'
+import { formatDate, formatMoney } from '../shared/lib/format'
 export default function ExpensesPage() {
   return (
     <>

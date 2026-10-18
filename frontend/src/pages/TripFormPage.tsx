@@ -1,8 +1,7 @@
 import { Link as RouterLink } from 'react-router-dom'
 import { Button, Card, CardContent, Grid, MenuItem, Stack, TextField } from '@mui/material'
-import PageHeader from '../components/PageHeader'
-import { budgets } from '../data/mock'
-
+import PageHeader from '../shared/ui/PageHeader'
+import { budgets } from '../entities/budget'
 // Лаб. №1: только вёрстка формы. Отправка и валидация появятся в следующих работах.
 export default function TripFormPage() {
   return (

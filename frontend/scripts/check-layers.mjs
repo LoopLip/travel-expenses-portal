@@ -1,4 +1,4 @@
-﻿// Проверка правила слоёв (упрощённый FSD): app → pages → features → entities → shared.
+// Проверка правила слоёв (упрощённый FSD): app → pages → features → entities → shared.
 // Слой может импортировать только нижележащие слои; features/entities не импортируют соседей своего слоя.
 // Запуск: npm run lint:layers
 import { readdirSync, readFileSync, statSync } from 'node:fs'
@@ -14,7 +14,7 @@ function walk(dir) {
   for (const name of readdirSync(dir)) {
     const full = path.join(dir, name)
     if (statSync(full).isDirectory()) walk(full)
-    else if (/\.(ts|tsx)$/.test(name)) check(full)
+    else if (/\.(ts|tsx)$/.test(name) && !/\.test\./.test(name)) check(full) // тесты намеренно проверяют несколько срезов сразу
   }
 }
 

@@ -16,6 +16,7 @@ const pages = [
   ['trips', '/trips'],
   ['trip-details', '/trips/1'],
   ['trip-new', '/trips/new'],
+  ['trip-edit', '/trips/1/edit'],
   ['expenses', '/expenses'],
   ['expense-new', '/expenses/new'],
   ['advances', '/advances'],
@@ -33,6 +34,7 @@ for (const [vpName, viewport] of Object.entries(viewports)) {
   const page = await ctx.newPage()
   for (const [name, route] of pages) {
     await page.goto(base + route, { waitUntil: 'networkidle' })
+    await page.waitForTimeout(900) // демо-API отвечает с задержкой, ждём данные и анимации
     await page.screenshot({ path: path.join(outDir, `${name}-${vpName}.png`), fullPage: true })
   }
   await ctx.close()

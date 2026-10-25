@@ -2,7 +2,7 @@ import enum
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, Date, DateTime, Enum, ForeignKey, Numeric, String, Text, func
+from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, Enum, ForeignKey, Numeric, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -29,6 +29,12 @@ class ExpenseCategory(str, enum.Enum):
     other = "other"
 
 
+class Role(str, enum.Enum):
+    employee = "employee"  # сотрудник: работает со своими данными
+    manager = "manager"  # руководитель: видит всё, согласует командировки
+    accountant = "accountant"  # бухгалтер: видит всё, выдаёт авансы, ведёт бюджеты
+
+
 def _enum(e: type[enum.Enum]) -> Enum:
     # Строковый столбец + CHECK вместо нативного ENUM: проще менять набор значений.
     return Enum(e, native_enum=False, length=20, values_callable=lambda x: [m.value for m in x])
@@ -41,8 +47,15 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String(120))
     email: Mapped[str] = mapped_column(String(255), unique=True)
     department: Mapped[str | None] = mapped_column(String(120))
+    # Хеш пароля (argon2id). Сам пароль нигде не хранится и не возвращается API.
+    password_hash: Mapped[str] = mapped_column(String(255))
+    role: Mapped[Role] = mapped_column(_enum(Role), default=Role.employee)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
     trips: Mapped[list["Trip"]] = relationship(back_populates="employee")
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan", passive_deletes=True
+    )
 
 
 class Budget(Base):
@@ -114,3 +127,20 @@ class Expense(Base):
     receipt_url: Mapped[str | None] = mapped_column(String(500))
 
     trip: Mapped[Trip] = relationship(back_populates="expenses")
+
+class RefreshToken(Base):
+    """Сессия входа: одна запись на каждый выданный refresh-токен (при обновлении выдаётся новый)."""
+
+    __tablename__ = "refresh_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    jti: Mapped[str] = mapped_column(String(36), unique=True)  # идентификатор токена (claim jti)
+    family_id: Mapped[str] = mapped_column(String(36), index=True)  # все токены одной сессии входа
+    token_hash: Mapped[str] = mapped_column(String(64))  # SHA-256 от токена; сам токен не хранится
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    user_agent: Mapped[str | None] = mapped_column(String(255))
+
+    user: Mapped[User] = relationship(back_populates="refresh_tokens")

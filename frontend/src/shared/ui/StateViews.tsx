@@ -1,4 +1,4 @@
-﻿import type { ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Alert, AlertTitle, Box, Button, Skeleton, Stack, Typography } from '@mui/material'
 import InboxOutlinedIcon from '@mui/icons-material/InboxOutlined'
 
@@ -14,14 +14,14 @@ export function LoadingState({ rows = 4 }: { rows?: number }) {
 }
 
 /** Состояние «ошибка»: сообщение и кнопка «Повторить». */
-export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+export function ErrorState({ message, onRetry, title = 'Не удалось загрузить данные' }: { message: string; onRetry?: () => void; title?: string }) {
   return (
     <Alert
       severity="error"
       data-testid="state-error"
       action={onRetry && <Button color="inherit" size="small" onClick={onRetry}>Повторить</Button>}
     >
-      <AlertTitle>Не удалось загрузить данные</AlertTitle>
+      <AlertTitle>{title}</AlertTitle>
       {message}
     </Alert>
   )

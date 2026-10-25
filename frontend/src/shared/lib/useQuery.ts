@@ -1,10 +1,12 @@
-﻿import { useCallback, useEffect, useRef, useState } from 'react'
-import { errorMessage, subscribeToChanges } from '../api'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { ApiError, errorMessage, subscribeToChanges } from '../api'
 
 export interface QueryState<T> {
   data: T | undefined
   loading: boolean
   error: string | null
+  /** HTTP-статус ошибки (если это ошибка API): позволяет отличить 403 от обычного сбоя. */
+  errorStatus: number | null
   reload: () => void
 }
 
@@ -16,6 +18,7 @@ export function useQuery<T>(fetcher: () => Promise<T>, deps: ReadonlyArray<unkno
   const [data, setData] = useState<T>()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [errorStatus, setErrorStatus] = useState<number | null>(null)
   const [tick, setTick] = useState(0)
   const [manual, setManual] = useState(0)
   const fetcherRef = useRef(fetcher)
@@ -31,9 +34,12 @@ export function useQuery<T>(fetcher: () => Promise<T>, deps: ReadonlyArray<unkno
         if (cancelled) return
         setData(result)
         setError(null)
+        setErrorStatus(null)
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(errorMessage(e))
+        if (cancelled) return
+        setError(errorMessage(e))
+        setErrorStatus(e instanceof ApiError ? e.status : null)
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -50,5 +56,5 @@ export function useQuery<T>(fetcher: () => Promise<T>, deps: ReadonlyArray<unkno
     setManual((m) => m + 1)
   }, [])
 
-  return { data, loading, error, reload }
+  return { data, loading, error, errorStatus, reload }
 }

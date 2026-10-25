@@ -7,12 +7,14 @@ import { AdvanceStatusChip, advanceApi, advanceStatusLabel, advanceStatuses } fr
 import type { AdvanceStatus } from '@/entities/advance'
 import { tripApi } from '@/entities/trip'
 import { AdvanceRequestDialog, AdvanceStatusMenu, DeleteAdvanceButton } from '@/features/advance-actions'
+import { useSession } from '@/entities/session'
 import { formatDate, formatMoney, useQuery } from '@/shared/lib'
 import { EmptyState, FadeRow, PageHeader, QueryBoundary } from '@/shared/ui'
 
 export default function AdvancesPage() {
   const [status, setStatus] = useState<'all' | AdvanceStatus>('all')
   const [open, setOpen] = useState(false)
+  const role = useSession().user?.role
   const query = useQuery(async () => {
     const [advances, trips] = await Promise.all([advanceApi.list(), tripApi.list()])
     return { advances, trips }
@@ -57,7 +59,7 @@ export default function AdvancesPage() {
                               <TableCell align="right">{formatMoney(a.amount)}</TableCell>
                               <TableCell><AdvanceStatusChip status={a.status} /></TableCell>
                               <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                                <Stack direction="row" sx={{ justifyContent: 'flex-end', alignItems: 'center' }}><AdvanceStatusMenu advance={a} /><DeleteAdvanceButton advance={a} /></Stack>
+                                <Stack direction="row" sx={{ justifyContent: 'flex-end', alignItems: 'center' }}>{role === 'accountant' && <AdvanceStatusMenu advance={a} />}<DeleteAdvanceButton advance={a} /></Stack>
                               </TableCell>
                             </TableRow>
                           </FadeRow>

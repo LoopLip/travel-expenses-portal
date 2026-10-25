@@ -1,4 +1,4 @@
-﻿import type { ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Fade } from '@mui/material'
 import type { QueryState } from '../lib/useQuery'
 import { useMotionTimeout } from '../lib/useMotion'
@@ -16,8 +16,10 @@ interface Props<T> {
 /** Единая обработка состояний загрузки, ошибки и отсутствия данных для любого запроса. */
 export default function QueryBoundary<T>({ query, isEmpty, empty, skeletonRows, children }: Props<T>) {
   const timeout = useMotionTimeout()
-  const { data, loading, error, reload } = query
+  const { data, loading, error, errorStatus, reload } = query
 
+  // 403: повторять запрос бессмысленно, показываем понятный отказ в доступе
+  if (error && errorStatus === 403) return <ErrorState title="Доступ запрещён" message={error} />
   if (error) return <ErrorState message={error} onRetry={reload} />
   if (loading || data === undefined) return <LoadingState rows={skeletonRows} />
 

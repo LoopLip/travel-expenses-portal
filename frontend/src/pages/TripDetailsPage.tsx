@@ -20,6 +20,7 @@ import { ApiError } from '@/shared/api'
 import { formatDate, formatMoney, fromKopecks, sumKopecks, toKopecks, useQuery } from '@/shared/lib'
 import { EmptyState, FadeRow, PageHeader, QueryBoundary } from '@/shared/ui'
 import NotFoundPage from './NotFoundPage'
+import { useSession } from '@/entities/session'
 
 type Tab = 'advances' | 'expenses' | 'summary'
 
@@ -27,6 +28,7 @@ export default function TripDetailsPage() {
   const { id } = useParams()
   const tripId = Number(id)
   const navigate = useNavigate()
+  const role = useSession().user?.role
   const [tab, setTab] = useState<Tab>('advances')
   const [more, setMore] = useState(false)
   const [advanceOpen, setAdvanceOpen] = useState(false)
@@ -71,7 +73,7 @@ export default function TripDetailsPage() {
                 action={
                   <Stack direction="row" spacing={1} useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
                     <TripStatusChip status={trip.status} />
-                    <TripStatusMenu trip={trip} />
+                    {role === 'manager' && <TripStatusMenu trip={trip} />}
                     <Button size="small" startIcon={<EditOutlinedIcon />} component={RouterLink} to={`/trips/${trip.id}/edit`}>Изменить</Button>
                     <DeleteTripButton trip={trip} onDone={() => navigate('/trips')} />
                   </Stack>
@@ -105,7 +107,7 @@ export default function TripDetailsPage() {
                         {advances.map((a) => (
                           <FadeRow key={a.id}>
                             <ListItem divider disableGutters data-testid="advance-item"
-                              secondaryAction={<Stack direction="row" sx={{ alignItems: 'center' }}><AdvanceStatusMenu advance={a} /><DeleteAdvanceButton advance={a} /></Stack>}>
+                              secondaryAction={<Stack direction="row" sx={{ alignItems: 'center' }}>{role === 'accountant' && <AdvanceStatusMenu advance={a} />}<DeleteAdvanceButton advance={a} /></Stack>}>
                               <ListItemText primary={formatMoney(a.amount)} secondary={`Запрос от ${formatDate(a.requested_at)}`} sx={{ pr: 18 }} />
                               <AdvanceStatusChip status={a.status} />
                             </ListItem>

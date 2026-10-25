@@ -1,13 +1,11 @@
-from typing import Annotated
+﻿from fastapi import APIRouter, Depends, Query, Response, status
 
-from fastapi import APIRouter, Depends, Query, Response, status
-from sqlalchemy.orm import Session
+from app import crud, permissions, schemas
+from app.deps import DB, CurrentUser, get_current_user
+from app.models import Role
 
-from app import crud, schemas
-from app.db import get_db
-
-router = APIRouter(prefix="/budgets", tags=["budgets"])
-DB = Annotated[Session, Depends(get_db)]
+router = APIRouter(prefix="/budgets", tags=["budgets"], dependencies=[Depends(get_current_user)])
+EDITORS = (Role.manager, Role.accountant)  # изменять бюджеты могут руководитель и бухгалтер
 
 
 @router.get("", response_model=list[schemas.BudgetOut])
@@ -16,7 +14,8 @@ def list_budgets(db: DB, skip: int = Query(0, ge=0), limit: int = Query(100, ge=
 
 
 @router.post("", response_model=schemas.BudgetOut, status_code=status.HTTP_201_CREATED)
-def create_budget(data: schemas.BudgetCreate, db: DB):
+def create_budget(data: schemas.BudgetCreate, db: DB, actor: CurrentUser):
+    permissions.require_role(actor, *EDITORS)
     return crud.create_budget(db, data)
 
 
@@ -31,11 +30,13 @@ def get_budget_summary(budget_id: int, db: DB):
 
 
 @router.patch("/{budget_id}", response_model=schemas.BudgetOut)
-def update_budget(budget_id: int, data: schemas.BudgetUpdate, db: DB):
+def update_budget(budget_id: int, data: schemas.BudgetUpdate, db: DB, actor: CurrentUser):
+    permissions.require_role(actor, *EDITORS)
     return crud.update_budget(db, budget_id, data)
 
 
 @router.delete("/{budget_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_budget(budget_id: int, db: DB):
+def delete_budget(budget_id: int, db: DB, actor: CurrentUser):
+    permissions.require_role(actor, *EDITORS)
     crud.delete_budget(db, budget_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

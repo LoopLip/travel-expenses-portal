@@ -2,28 +2,19 @@
 
 
 # ---------- users ----------
-def test_user_crud(client):
-    r = client.post("/users", json={"full_name": "  Петрова Анна ", "email": "Anna@Example.com"})
-    assert r.status_code == 201
-    user = r.json()
-    assert user["full_name"] == "Петрова Анна"  # пробелы обрезаны
-    assert user["email"] == "anna@example.com"  # email нормализован
+def test_user_read_update_delete(client, make_user):
+    user = make_user("Anna@Example.com", "Петрова Анна")
+    assert user["email"] == "Anna@Example.com"  # создан напрямую в БД
+    assert client.get(f"/users/{user['id']}").json()["full_name"] == "Петрова Анна"
 
-    assert client.get(f"/users/{user['id']}").json()["email"] == "anna@example.com"
-    assert len(client.get("/users").json()) == 1
-
-    r = client.patch(f"/users/{user['id']}", json={"department": "Разработка"})
-    assert r.status_code == 200 and r.json()["department"] == "Разработка"
+    r = client.patch(f"/users/{user['id']}", json={"department": "Разработка", "email": " Anna2@Example.com "})
+    assert r.status_code == 200
+    assert r.json()["department"] == "Разработка"
+    assert r.json()["email"] == "anna2@example.com"  # email нормализован
+    assert "password_hash" not in r.json()
 
     assert client.delete(f"/users/{user['id']}").status_code == 204
     assert client.get(f"/users/{user['id']}").status_code == 404
-
-
-def test_user_duplicate_email_conflict(client, make_user):
-    make_user("a@example.com")
-    r = client.post("/users", json={"full_name": "Другой", "email": "A@example.com"})
-    assert r.status_code == 409
-    assert "уже существует" in r.json()["detail"]
 
 
 def test_user_update_to_taken_email_conflict(client, make_user):
@@ -32,12 +23,6 @@ def test_user_update_to_taken_email_conflict(client, make_user):
     assert client.patch(f"/users/{b['id']}", json={"email": "a@example.com"}).status_code == 409
     # собственный email повторно — не конфликт
     assert client.patch(f"/users/{b['id']}", json={"email": "b@example.com"}).status_code == 200
-
-
-def test_user_validation_422(client):
-    assert client.post("/users", json={"full_name": "", "email": "x@example.com"}).status_code == 422
-    assert client.post("/users", json={"full_name": "Имя", "email": "not-an-email"}).status_code == 422
-    assert client.post("/users", json={"email": "x@example.com"}).status_code == 422
 
 
 def test_not_found_has_message(client):
@@ -175,7 +160,7 @@ def test_trip_delete_frees_user_and_budget(client, make_user, make_budget, make_
 
 
 # ---------- advances ----------
-def test_advance_crud_and_limit(client, make_trip):
+def test_advance_crud_and_limit(client, make_trip, accountant, client_for):
     trip = make_trip("60000.00")
     r = client.post("/advances", json={"trip_id": trip["id"], "amount": "40000"})
     assert r.status_code == 201 and r.json()["status"] == "requested"
@@ -185,7 +170,8 @@ def test_advance_crud_and_limit(client, make_trip):
     r = client.post("/advances", json={"trip_id": trip["id"], "amount": "30000"})
     assert r.status_code == 400 and "превышает" in r.json()["detail"]
 
-    assert client.patch(f"/advances/{aid}", json={"status": "issued"}).json()["status"] == "issued"
+    # статус аванса меняет только бухгалтер
+    assert client_for(accountant).patch(f"/advances/{aid}", json={"status": "issued"}).json()["status"] == "issued"
     assert client.patch(f"/advances/{aid}", json={"amount": "70000"}).status_code == 400
     assert client.patch(f"/advances/{aid}", json={"amount": "60000"}).status_code == 200  # свой аванс не считается дважды
 

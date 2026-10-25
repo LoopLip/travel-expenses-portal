@@ -1,13 +1,25 @@
-"""Тесты работают с настоящим PostgreSQL, но в отдельной БД `<имя>_test` (создаётся автоматически)."""
-import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
-from sqlalchemy.engine import make_url
-from sqlalchemy.orm import sessionmaker
+﻿"""Тесты работают с настоящим PostgreSQL, но в отдельной БД `<имя>_test` (создаётся автоматически)."""
+import os
 
-from app.config import settings
-from app.db import Base, get_db
-from app.main import app
+# Секрет для тестов задаём до импорта приложения (настройки читаются при импорте).
+os.environ.setdefault("JWT_SECRET", "test-only-secret-" + "x" * 40)
+
+import pytest  # noqa: E402
+from argon2 import PasswordHasher  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+from sqlalchemy import create_engine, text  # noqa: E402
+from sqlalchemy.engine import make_url  # noqa: E402
+from sqlalchemy.orm import sessionmaker  # noqa: E402
+
+from app import models, security  # noqa: E402
+from app.config import settings  # noqa: E402
+from app.db import Base, get_db  # noqa: E402
+from app.main import app  # noqa: E402
+
+# Быстрые параметры argon2 только для тестов (в приложении — параметры библиотеки по умолчанию).
+security.hasher = PasswordHasher(time_cost=1, memory_cost=8, parallelism=1)
+
+PASSWORD = "correct-horse-battery"
 
 
 def _prepare_test_database() -> str:
@@ -30,28 +42,103 @@ def engine():
 
 
 @pytest.fixture()
-def client(engine):
+def Session(engine):
+    """Чистые таблицы перед каждым тестом; приложение работает с тестовой БД."""
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
-    Session = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+    factory = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
     def override_get_db():
-        with Session() as s:
+        with factory() as s:
             yield s
 
     app.dependency_overrides[get_db] = override_get_db
-    # Без контекстного менеджера lifespan не запускается: таблицы уже созданы выше.
-    yield TestClient(app)
+    yield factory
     app.dependency_overrides.clear()
 
 
-# ---------- фабрики тестовых данных ----------
 @pytest.fixture()
-def make_user(client):
-    def _make(email="ivanov@example.com", name="Иванов Иван"):
-        r = client.post("/users", json={"full_name": name, "email": email, "department": "Продажи"})
-        assert r.status_code == 201, r.text
-        return r.json()
+def anon(Session):
+    """Клиент без входа (со своим хранилищем cookie)."""
+    return TestClient(app)
+
+
+# ---------- пользователи и вход ----------
+@pytest.fixture()
+def create_user(Session):
+    """Создаёт пользователя прямо в БД (так появляются менеджеры и бухгалтеры: через API роль не назначить)."""
+    counter = {"n": 0}
+
+    def _create(role: str = "employee", email: str | None = None, name: str | None = None, password: str = PASSWORD):
+        counter["n"] += 1
+        email = email or f"{role}{counter['n']}@example.com"
+        with Session() as s:
+            user = models.User(
+                full_name=name or f"Тест {role} {counter['n']}",
+                email=email,
+                department="Продажи",
+                password_hash=security.hash_password(password),
+                role=models.Role(role),
+            )
+            s.add(user)
+            s.commit()
+            return {"id": user.id, "email": email, "password": password, "role": role, "full_name": user.full_name}
+
+    return _create
+
+
+@pytest.fixture()
+def login(anon):
+    def _login(user: dict, client: TestClient | None = None) -> str:
+        c = client or anon
+        r = c.post("/auth/login", data={"username": user["email"], "password": user["password"]})
+        assert r.status_code == 200, r.text
+        return r.json()["access_token"]
+
+    return _login
+
+
+@pytest.fixture()
+def client_for(Session, login):
+    """Клиент, вошедший под указанным пользователем (заголовок Authorization подставлен)."""
+
+    def _client(user: dict) -> TestClient:
+        c = TestClient(app)
+        c.headers["Authorization"] = f"Bearer {login(user, c)}"
+        return c
+
+    return _client
+
+
+@pytest.fixture()
+def manager(create_user):
+    return create_user("manager", "manager@example.com", "Руководитель")
+
+
+@pytest.fixture()
+def accountant(create_user):
+    return create_user("accountant", "accountant@example.com", "Бухгалтер")
+
+
+@pytest.fixture()
+def employee(create_user):
+    return create_user("employee", "employee@example.com", "Сотрудник")
+
+
+@pytest.fixture()
+def client(manager, client_for):
+    """Основной клиент прежних тестов (CRUD): вошёл руководитель, у него есть права на всё."""
+    return client_for(manager)
+
+
+# ---------- фабрики тестовых данных (создаёт руководитель) ----------
+@pytest.fixture()
+def make_user(create_user):
+    counter = {"n": 0}
+
+    def _make(email=None, name="Иванов Иван"):
+        counter["n"] += 1
+        return create_user("employee", email or f"ivanov{counter['n']}@example.com", name)
 
     return _make
 
@@ -71,6 +158,7 @@ def make_trip(client, make_user, make_budget):
     def _make(planned="100000.00", **overrides):
         user = overrides.pop("user", None) or make_user()
         budget = overrides.pop("budget", None) or make_budget()
+        by = overrides.pop("by", None) or client
         payload = {
             "destination": "Казань",
             "purpose": "Конференция",
@@ -81,7 +169,7 @@ def make_trip(client, make_user, make_budget):
             "budget_id": budget["id"],
             **overrides,
         }
-        r = client.post("/trips", json=payload)
+        r = by.post("/trips", json=payload)
         assert r.status_code == 201, r.text
         return r.json()
 

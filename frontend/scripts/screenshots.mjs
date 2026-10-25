@@ -2,6 +2,7 @@
 // Требуется запущенный frontend (npm run dev) и установленный Chrome/Chromium.
 // Переменные: BASE_URL (по умолчанию http://localhost:5173), CHROME_PATH.
 import { chromium } from 'playwright-core'
+import { ensureBackend, loginUi, provisionUsers } from './e2e-env.mjs'
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -21,19 +22,34 @@ const pages = [
   ['expense-new', '/expenses/new'],
   ['advances', '/advances'],
   ['budgets', '/budgets'],
+  ['users', '/users'],
   ['not-found', '/no-such-page'],
+]
+// Страницы для гостя (до входа)
+const guestPages = [
+  ['login', '/login'],
+  ['register', '/register'],
 ]
 const viewports = {
   desktop: { width: 1366, height: 800 },
   mobile: { width: 390, height: 800 },
 }
 
+// Экраны закрыты входом: нужен запущенный backend. Для снимков создаётся руководитель (случайный пароль, см. e2e-env.mjs).
+await ensureBackend()
+const users = await provisionUsers()
 const browser = await chromium.launch({ executablePath: chromePath })
 for (const [vpName, viewport] of Object.entries(viewports)) {
   const ctx = await browser.newContext({ viewport })
   const page = await ctx.newPage()
+  for (const [name, route] of guestPages) {
+    await page.goto(base + route, { waitUntil: 'load' })
+    await page.waitForTimeout(900)
+    await page.screenshot({ path: path.join(outDir, `${name}-${vpName}.png`), fullPage: true })
+  }
+  await loginUi(page, base, users.manager)
   for (const [name, route] of pages) {
-    await page.goto(base + route, { waitUntil: 'networkidle' })
+    await page.goto(base + route, { waitUntil: 'load' })
     await page.waitForTimeout(900) // демо-API отвечает с задержкой, ждём данные и анимации
     await page.screenshot({ path: path.join(outDir, `${name}-${vpName}.png`), fullPage: true })
   }

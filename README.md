@@ -123,8 +123,6 @@ frontend/src
 
 ---
 
----
-
 # Backend (лабораторная №2)
 
 Стек: Python, FastAPI, SQLAlchemy 2, PostgreSQL 16 (драйвер psycopg 3), Pydantic v2, pydantic-settings, pytest.
@@ -193,7 +191,7 @@ erDiagram
 - Пользователя и бюджет, у которых есть командировки, удалить нельзя: `ON DELETE RESTRICT` в БД и ответ 409 в API.
 - `users.email` уникален (409 при дубле). Email сохраняется в нижнем регистре.
 - CHECK-ограничения в БД: суммы положительные, `end_date >= start_date`.
-- Статусы (`trips.status`, `advances.status`, `expenses.category`) хранятся строкой с CHECK-ограничением.
+- Статусы (`trips.status`, `advances.status`, `expenses.category`) хранятся в БД обычной строкой (`VARCHAR(20)`) без CHECK-ограничения: допустимые значения проверяются в коде (перечисления Python, схемы Pydantic). Прямой SQL-запрос может записать произвольную строку; для полной защиты нужен CHECK или нативный ENUM в миграции.
 
 Бизнес-правила (`crud.py`):
 

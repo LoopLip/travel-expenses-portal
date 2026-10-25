@@ -21,6 +21,14 @@ class BusinessRuleError(Exception):
     """Нарушение бизнес-правила -> 400."""
 
 
+class AuthenticationError(Exception):
+    """Не удалось подтвердить личность (нет/неверный/истёкший токен, неверный пароль) -> 401."""
+
+
+class ForbiddenError(Exception):
+    """Личность известна, но прав на операцию нет -> 403."""
+
+
 T = TypeVar("T")
 
 
@@ -60,9 +68,17 @@ def _ensure_email_free(db: Session, email: str, exclude_id: int | None = None) -
         raise ConflictError(f"Пользователь с email {email} уже существует")
 
 
-def create_user(db: Session, data: schemas.UserCreate) -> models.User:
+def create_user(
+    db: Session, data: schemas.UserRegister, password_hash: str, role: models.Role = models.Role.employee
+) -> models.User:
     _ensure_email_free(db, data.email)
-    user = models.User(**data.model_dump())
+    user = models.User(
+        full_name=data.full_name,
+        email=data.email,
+        department=data.department,
+        password_hash=password_hash,
+        role=role,
+    )
     db.add(user)
     _commit(db, f"Пользователь с email {data.email} уже существует")
     db.refresh(user)
@@ -160,10 +176,10 @@ def get_trip(db: Session, trip_id: int) -> models.Trip:
     return _get_or_404(db, models.Trip, trip_id, "Командировка")
 
 
-def create_trip(db: Session, data: schemas.TripCreate) -> models.Trip:
-    get_user(db, data.user_id)
+def create_trip(db: Session, data: schemas.TripCreate, user_id: int) -> models.Trip:
+    get_user(db, user_id)
     get_budget(db, data.budget_id)
-    trip = models.Trip(**data.model_dump())
+    trip = models.Trip(**{**data.model_dump(), "user_id": user_id})
     db.add(trip)
     db.commit()
     db.refresh(trip)
@@ -196,10 +212,14 @@ def delete_trip(db: Session, trip_id: int) -> None:
 
 
 # ---------- advances ----------
-def list_advances(db: Session, skip: int, limit: int, trip_id: int | None = None) -> list[models.Advance]:
+def list_advances(
+    db: Session, skip: int, limit: int, trip_id: int | None = None, owner_id: int | None = None
+) -> list[models.Advance]:
     stmt = select(models.Advance).order_by(models.Advance.id).offset(skip).limit(limit)
     if trip_id is not None:
         stmt = stmt.where(models.Advance.trip_id == trip_id)
+    if owner_id is not None:  # только авансы по командировкам этого сотрудника
+        stmt = stmt.join(models.Trip, models.Trip.id == models.Advance.trip_id).where(models.Trip.user_id == owner_id)
     return list(db.scalars(stmt))
 
 
@@ -242,10 +262,14 @@ def delete_advance(db: Session, advance_id: int) -> None:
 
 
 # ---------- expenses ----------
-def list_expenses(db: Session, skip: int, limit: int, trip_id: int | None = None) -> list[models.Expense]:
+def list_expenses(
+    db: Session, skip: int, limit: int, trip_id: int | None = None, owner_id: int | None = None
+) -> list[models.Expense]:
     stmt = select(models.Expense).order_by(models.Expense.id).offset(skip).limit(limit)
     if trip_id is not None:
         stmt = stmt.where(models.Expense.trip_id == trip_id)
+    if owner_id is not None:
+        stmt = stmt.join(models.Trip, models.Trip.id == models.Expense.trip_id).where(models.Trip.user_id == owner_id)
     return list(db.scalars(stmt))
 
 

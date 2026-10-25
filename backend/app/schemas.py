@@ -4,7 +4,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
-from app.models import AdvanceStatus, ExpenseCategory, TripStatus
+from app.models import AdvanceStatus, ExpenseCategory, Role, TripStatus
 
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
 Email = Annotated[
@@ -33,9 +33,15 @@ class UpdateModel(BaseModel):
 
 
 # ---------- users ----------
-class UserCreate(BaseModel):
+Password = Annotated[str, StringConstraints(min_length=8, max_length=128)]
+
+
+class UserRegister(BaseModel):
+    """Саморегистрация. Роли в схеме нет намеренно: все новые пользователи получают роль employee."""
+
     full_name: Name
     email: Email
+    password: Password
     department: Name | None = None
 
 
@@ -48,10 +54,21 @@ class UserUpdate(UpdateModel):
 
 
 class UserOut(ORMModel):
+    """Данные пользователя в ответах API. Поля password_hash здесь нет и быть не должно."""
+
     id: int
     full_name: str
     email: str
     department: str | None
+    role: Role
+
+
+class TokenResponse(BaseModel):
+    """Ответ на вход и обновление. Refresh-токен передаётся только в HttpOnly-cookie."""
+
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int  # секунд до истечения access-токена
 
 
 # ---------- budgets ----------
@@ -89,7 +106,7 @@ class TripBase(BaseModel):
 
 
 class TripCreate(TripBase):
-    user_id: int
+    user_id: int | None = None  # не указан — командировка оформляется на текущего пользователя
     budget_id: int
 
     @model_validator(mode="after")

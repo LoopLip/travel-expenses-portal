@@ -1,6 +1,7 @@
-﻿export type { Trip, TripCreate, TripUpdate, TripStatus } from './model/types'
+﻿export type { Trip, TripCreate, TripUpdate, TripStatus, TripListFilter } from './model/types'
 export { tripStatusLabel, tripStatuses, NON_RESERVING } from './model/labels'
 export { tripFormSchema } from './model/schema'
 export type { TripFormValues } from './model/schema'
 export { tripApi } from './api/tripApi'
+export { toTrip, toTrips, toTripCreate, toTripUpdate } from './api/mappers'
 export { default as TripStatusChip } from './ui/TripStatusChip'

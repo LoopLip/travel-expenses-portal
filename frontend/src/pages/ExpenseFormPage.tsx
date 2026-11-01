@@ -1,4 +1,4 @@
-﻿import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Card, CardContent } from '@mui/material'
 import { tripApi } from '@/entities/trip'
 import { ExpenseForm } from '@/features/expense-actions'
@@ -7,7 +7,7 @@ import { PageHeader, QueryBoundary } from '@/shared/ui'
 
 export default function ExpenseFormPage() {
   const navigate = useNavigate()
-  const trips = useQuery(() => tripApi.list())
+  const trips = useQuery((signal) => tripApi.list({}, signal))
   return (
     <>
       <PageHeader title="Новый расход" subtitle="Загрузите фото чека — сумма и дата подставятся автоматически" />

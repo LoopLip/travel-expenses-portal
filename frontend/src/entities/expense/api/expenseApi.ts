@@ -1,13 +1,14 @@
-﻿import { createCollection } from '@/shared/api'
-import { seedExpenses } from '../model/seed'
-import type { Expense, ExpenseCreate, ExpenseUpdate } from '../model/types'
+﻿import { MAX_LIST_LIMIT, http, mutate } from '@/shared/api'
+import type { Expense, ExpenseCreate, ExpenseListFilter, ExpenseUpdate } from '../model/types'
+import { toExpense, toExpenses } from './mappers'
 
-const expenses = createCollection<Expense>('expenses', seedExpenses, 'Расход')
-
+/** Запросы к /expenses. Бухгалтер расходы только просматривает (на изменение сервер ответит 403). */
 export const expenseApi = {
-  list: () => expenses.list(),
-  get: (id: number) => expenses.get(id),
-  create: (data: ExpenseCreate) => expenses.insert((id) => ({ ...data, id })),
-  update: (id: number, changes: ExpenseUpdate) => expenses.patch(id, changes),
-  remove: (id: number) => expenses.remove(id),
+  list: (filter: ExpenseListFilter = {}, signal?: AbortSignal): Promise<Expense[]> =>
+    http.request<unknown>('/expenses', { params: { ...filter, limit: MAX_LIST_LIMIT }, signal }).then(toExpenses),
+  get: (id: number, signal?: AbortSignal): Promise<Expense> => http.request<unknown>(`/expenses/${id}`, { signal }).then(toExpense),
+  create: (data: ExpenseCreate): Promise<Expense> => mutate<unknown>('/expenses', { method: 'POST', json: data }).then(toExpense),
+  update: (id: number, changes: ExpenseUpdate): Promise<Expense> =>
+    mutate<unknown>(`/expenses/${id}`, { method: 'PATCH', json: changes }).then(toExpense),
+  remove: (id: number): Promise<void> => mutate<void>(`/expenses/${id}`, { method: 'DELETE' }),
 }

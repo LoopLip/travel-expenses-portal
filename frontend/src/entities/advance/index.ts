@@ -1,4 +1,5 @@
-﻿export type { Advance, AdvanceCreate, AdvanceUpdate, AdvanceStatus } from './model/types'
+﻿export type { Advance, AdvanceCreate, AdvanceUpdate, AdvanceStatus, AdvanceListFilter } from './model/types'
 export { advanceStatusLabel, advanceStatuses } from './model/labels'
 export { advanceApi } from './api/advanceApi'
+export { toAdvance, toAdvances } from './api/mappers'
 export { default as AdvanceStatusChip } from './ui/AdvanceStatusChip'

@@ -1,10 +1,6 @@
-﻿import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { toKopecks } from '@/shared/lib'
-import { advanceLimitError, makeAdvanceFormSchema, requestAdvance } from '@/features/advance-actions'
-import { advanceApi } from '@/entities/advance'
-import { deleteTrip } from '@/features/trip-delete'
-import { expenseApi } from '@/entities/expense'
-import { tripApi } from '@/entities/trip'
+import { advanceLimitError, makeAdvanceFormSchema } from '@/features/advance-actions'
 
 describe('правило авансов: сумма авансов не больше плановой суммы', () => {
   it('advanceLimitError', () => {
@@ -17,23 +13,5 @@ describe('правило авансов: сумма авансов не боль
     const bad = schema.safeParse({ trip_id: '2', amount: '40000' })
     expect(bad.success).toBe(false)
     expect(bad.error?.issues[0].path).toEqual(['amount'])
-  })
-})
-
-describe('демо-API (без localStorage, данные в памяти)', () => {
-  it('requestAdvance отклоняет аванс сверх лимита и принимает в пределах', async () => {
-    await expect(requestAdvance(2, '40000')).rejects.toMatchObject({ status: 400 })
-    const ok = await requestAdvance(2, '32000')
-    expect(ok.amount).toBe('32000.00')
-    expect(ok.status).toBe('requested')
-  })
-  it('requestAdvance для несуществующей командировки — 404', async () => {
-    await expect(requestAdvance(999, '10')).rejects.toMatchObject({ status: 404 })
-  })
-  it('deleteTrip каскадно удаляет авансы и расходы', async () => {
-    await deleteTrip(3)
-    expect((await advanceApi.list()).some((a) => a.trip_id === 3)).toBe(false)
-    expect((await expenseApi.list()).some((e) => e.trip_id === 3)).toBe(false)
-    await expect(tripApi.get(3)).rejects.toMatchObject({ status: 404 })
   })
 })

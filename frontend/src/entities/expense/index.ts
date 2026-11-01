@@ -1,5 +1,6 @@
-﻿export type { Expense, ExpenseCreate, ExpenseUpdate, ExpenseCategory } from './model/types'
+﻿export type { Expense, ExpenseCreate, ExpenseUpdate, ExpenseCategory, ExpenseListFilter } from './model/types'
 export { categoryLabel, expenseCategories } from './model/labels'
 export { expenseFormSchema } from './model/schema'
 export type { ExpenseFormValues } from './model/schema'
 export { expenseApi } from './api/expenseApi'
+export { toExpense, toExpenses, toExpenseCreate, toExpenseUpdate } from './api/mappers'

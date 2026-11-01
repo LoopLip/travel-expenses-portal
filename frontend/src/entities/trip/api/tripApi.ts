@@ -1,15 +1,15 @@
-﻿import { createCollection } from '@/shared/api'
-import { seedTrips } from '../model/seed'
-import type { Trip, TripCreate, TripUpdate } from '../model/types'
+﻿import { MAX_LIST_LIMIT, http, mutate } from '@/shared/api'
+import type { Trip, TripCreate, TripListFilter, TripUpdate } from '../model/types'
+import { toTrip, toTrips } from './mappers'
 
-const trips = createCollection<Trip>('trips', seedTrips, 'Командировка')
-
-/** Сырые операции с командировками (как эндпоинты /trips). Правила и связи проверяют features. */
+/** Запросы к /trips. Права проверяет сервер: сотрудник получает только свои командировки. */
 export const tripApi = {
-  list: () => trips.list(),
-  get: (id: number) => trips.get(id),
-  create: (data: TripCreate) =>
-    trips.insert((id) => ({ ...data, id, status: 'draft', created_at: new Date().toISOString() })),
-  update: (id: number, changes: TripUpdate) => trips.patch(id, changes),
-  remove: (id: number) => trips.remove(id),
+  list: (filter: TripListFilter = {}, signal?: AbortSignal): Promise<Trip[]> =>
+    http.request<unknown>('/trips', { params: { ...filter, limit: MAX_LIST_LIMIT }, signal }).then(toTrips),
+  get: (id: number, signal?: AbortSignal): Promise<Trip> => http.request<unknown>(`/trips/${id}`, { signal }).then(toTrip),
+  create: (data: TripCreate): Promise<Trip> => mutate<unknown>('/trips', { method: 'POST', json: data }).then(toTrip),
+  update: (id: number, changes: TripUpdate): Promise<Trip> =>
+    mutate<unknown>(`/trips/${id}`, { method: 'PATCH', json: changes }).then(toTrip),
+  /** Сервер удаляет вместе с командировкой её авансы и расходы (ON DELETE CASCADE). */
+  remove: (id: number): Promise<void> => mutate<void>(`/trips/${id}`, { method: 'DELETE' }),
 }

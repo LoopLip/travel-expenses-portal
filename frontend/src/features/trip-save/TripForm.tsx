@@ -1,25 +1,28 @@
-﻿import { zodResolver } from '@hookform/resolvers/zod'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { Alert, Button, Collapse, Grid, MenuItem, Stack } from '@mui/material'
 import { useState } from 'react'
 import { tripFormSchema } from '@/entities/trip'
 import type { Trip, TripFormValues } from '@/entities/trip'
 import type { Budget } from '@/entities/budget'
-import type { User } from '@/entities/user'
+import type { SessionUser } from '@/entities/session'
 import { errorMessage } from '@/shared/api'
 import { FormField, useNotify } from '@/shared/ui'
 import { createTrip, updateTrip } from './saveTrip'
 
 interface Props {
   trip?: Trip
-  users: User[]
+  /** Сотрудники для выбора (только руководителю). Пустой список — поле скрыто, командировка оформляется на себя. */
+  users: SessionUser[]
+  currentUserId: number
   budgets: Budget[]
   onSaved: (trip: Trip) => void
   onCancel: () => void
 }
 
 /** Форма создания и редактирования командировки с клиентской валидацией (zod). */
-export default function TripForm({ trip, users, budgets, onSaved, onCancel }: Props) {
+export default function TripForm({ trip, users, currentUserId, budgets, onSaved, onCancel }: Props) {
+  const chooseEmployee = users.length > 0
   const notify = useNotify()
   const [serverError, setServerError] = useState<string | null>(null)
   const { control, handleSubmit, formState } = useForm<TripFormValues>({
@@ -31,7 +34,7 @@ export default function TripForm({ trip, users, budgets, onSaved, onCancel }: Pr
       start_date: trip?.start_date ?? '',
       end_date: trip?.end_date ?? '',
       planned_amount: trip ? trip.planned_amount : '',
-      user_id: trip ? String(trip.user_id) : '',
+      user_id: trip ? String(trip.user_id) : chooseEmployee ? '' : String(currentUserId),
       budget_id: trip ? String(trip.budget_id) : '',
     },
   })
@@ -39,7 +42,7 @@ export default function TripForm({ trip, users, budgets, onSaved, onCancel }: Pr
   const submit = handleSubmit(async (values) => {
     setServerError(null)
     try {
-      const saved = trip ? await updateTrip(trip.id, values) : await createTrip(values)
+      const saved = trip ? await updateTrip(trip.id, values) : await createTrip(values, chooseEmployee)
       notify(trip ? 'Командировка сохранена' : 'Командировка создана')
       onSaved(saved)
     } catch (e) {
@@ -50,14 +53,16 @@ export default function TripForm({ trip, users, budgets, onSaved, onCancel }: Pr
   return (
     <form onSubmit={submit} noValidate aria-label="Форма командировки">
       <Grid container spacing={2}>
-        <Grid size={{ xs: 12, sm: 6 }}>
+        <Grid size={{ xs: 12, sm: chooseEmployee ? 6 : 12 }}>
           <FormField control={control} name="destination" label="Направление" />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <FormField control={control} name="user_id" label="Сотрудник" select disabled={Boolean(trip)}>
-            {users.map((u) => <MenuItem key={u.id} value={String(u.id)}>{u.full_name}</MenuItem>)}
-          </FormField>
-        </Grid>
+        {chooseEmployee && (
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <FormField control={control} name="user_id" label="Сотрудник" select disabled={Boolean(trip)}>
+              {users.map((u) => <MenuItem key={u.id} value={String(u.id)}>{u.full_name}</MenuItem>)}
+            </FormField>
+          </Grid>
+        )}
         <Grid size={{ xs: 12 }}>
           <FormField control={control} name="purpose" label="Цель поездки" multiline minRows={2} />
         </Grid>

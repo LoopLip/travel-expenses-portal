@@ -1,15 +1,14 @@
-﻿import { createCollection } from '@/shared/api'
-import { todayIso } from '@/shared/lib'
-import { seedAdvances } from '../model/seed'
-import type { Advance, AdvanceCreate, AdvanceUpdate } from '../model/types'
+﻿import { MAX_LIST_LIMIT, http, mutate } from '@/shared/api'
+import type { Advance, AdvanceCreate, AdvanceListFilter, AdvanceUpdate } from '../model/types'
+import { toAdvance, toAdvances } from './mappers'
 
-const advances = createCollection<Advance>('advances', seedAdvances, 'Аванс')
-
+/** Запросы к /advances. Лимит «сумма авансов ≤ плановой суммы» проверяет сервер (400). */
 export const advanceApi = {
-  list: () => advances.list(),
-  get: (id: number) => advances.get(id),
-  create: (data: AdvanceCreate) =>
-    advances.insert((id) => ({ ...data, id, status: 'requested', requested_at: todayIso() })),
-  update: (id: number, changes: AdvanceUpdate) => advances.patch(id, changes),
-  remove: (id: number) => advances.remove(id),
+  list: (filter: AdvanceListFilter = {}, signal?: AbortSignal): Promise<Advance[]> =>
+    http.request<unknown>('/advances', { params: { ...filter, limit: MAX_LIST_LIMIT }, signal }).then(toAdvances),
+  get: (id: number, signal?: AbortSignal): Promise<Advance> => http.request<unknown>(`/advances/${id}`, { signal }).then(toAdvance),
+  create: (data: AdvanceCreate): Promise<Advance> => mutate<unknown>('/advances', { method: 'POST', json: data }).then(toAdvance),
+  update: (id: number, changes: AdvanceUpdate): Promise<Advance> =>
+    mutate<unknown>(`/advances/${id}`, { method: 'PATCH', json: changes }).then(toAdvance),
+  remove: (id: number): Promise<void> => mutate<void>(`/advances/${id}`, { method: 'DELETE' }),
 }

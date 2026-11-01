@@ -1,17 +1,18 @@
-﻿import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink } from 'react-router-dom'
 import { Button, Card, CardContent, Grid, List, ListItem, ListItemText, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import { advanceApi } from '@/entities/advance'
-import { budgetApi } from '@/entities/budget'
 import { expenseApi } from '@/entities/expense'
 import { TripStatusChip, tripApi } from '@/entities/trip'
-import { AnimatedBar, computeBudgetUsage } from '@/features/budget-usage'
+import { AnimatedBar, loadBudgetUsage } from '@/features/budget-usage'
 import { formatDate, formatMoney, fromKopecks, sumKopecks, todayIso, useQuery } from '@/shared/lib'
 import { EmptyState, PageHeader, QueryBoundary } from '@/shared/ui'
 
 export default function DashboardPage() {
-  const query = useQuery(async () => {
-    const [trips, advances, expenses, budgets] = await Promise.all([tripApi.list(), advanceApi.list(), expenseApi.list(), budgetApi.list()])
+  const query = useQuery(async (signal) => {
+    const [trips, advances, expenses, budgets] = await Promise.all([
+      tripApi.list({}, signal), advanceApi.list({}, signal), expenseApi.list({}, signal), loadBudgetUsage(signal),
+    ])
     return { trips, advances, expenses, budgets }
   })
 
@@ -72,7 +73,7 @@ export default function DashboardPage() {
               <Grid size={{ xs: 12, md: 6 }}>
                 <Card sx={{ height: '100%' }}><CardContent>
                   <Typography variant="h6" gutterBottom>Использование бюджетов</Typography>
-                  {computeBudgetUsage(budgets, trips).map((b) => (
+                  {budgets.map((b) => (
                     <div key={b.id} style={{ marginBottom: 16 }}>
                       <Typography variant="body2">{b.department}: {formatMoney(b.reserved)} из {formatMoney(b.limit_amount)}</Typography>
                       <div style={{ marginTop: 4 }}><AnimatedBar percent={b.percent} /></div>

@@ -1,11 +1,11 @@
 ﻿export type TripStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'completed'
 
-/** Соответствует TripOut в backend. */
+/** Командировка (ответ TripOut). Имена полей совпадают с API, суммы — строки «0.00», даты — «YYYY-MM-DD». */
 export interface Trip {
   id: number
   destination: string
   purpose: string
-  start_date: string // yyyy-mm-dd
+  start_date: string
   end_date: string
   status: TripStatus
   planned_amount: string
@@ -14,16 +14,24 @@ export interface Trip {
   created_at: string
 }
 
-/** Соответствует TripCreate. */
+/** Тело POST /trips. user_id не указан — командировка оформляется на текущего пользователя. */
 export interface TripCreate {
   destination: string
   purpose: string
   start_date: string
   end_date: string
   planned_amount: string
-  user_id: number
   budget_id: number
+  user_id?: number
 }
 
-/** Соответствует TripUpdate: все поля необязательны (PATCH). */
+/** Тело PATCH /trips/{id}: все поля необязательны, сотрудника сменить нельзя. */
 export type TripUpdate = Partial<Omit<TripCreate, 'user_id'> & { status: TripStatus }>
+
+/** Фильтры GET /trips (выполняются на сервере). */
+export interface TripListFilter {
+  status?: TripStatus
+  q?: string
+  user_id?: number
+  budget_id?: number
+}

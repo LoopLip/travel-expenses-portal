@@ -1,11 +1,11 @@
-﻿import { Chip, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material'
-import { accountsApi, roleLabel } from '@/entities/session'
+import { Chip, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material'
+import { roleLabel, usersApi } from '@/entities/session'
 import { useQuery } from '@/shared/lib'
 import { PageHeader, QueryBoundary } from '@/shared/ui'
 
 /** Сотрудники: реальные данные из backend (GET /users). Доступно руководителю и бухгалтеру; остальным backend отвечает 403. */
 export default function UsersPage() {
-  const query = useQuery(() => accountsApi.list())
+  const query = useQuery((signal) => usersApi.list(signal))
   return (
     <>
       <PageHeader title="Сотрудники" subtitle="Учётные записи пользователей (данные из backend)" />

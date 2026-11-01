@@ -5,8 +5,10 @@ export const MONEY_PATTERN = /^\d{1,10}([.,]\d{1,2})?$/
 
 export function toKopecks(value: string | number): number {
   const s = String(value).trim().replace(',', '.')
-  const [int, frac = ''] = s.split('.')
-  return Number(int) * 100 + Number((frac + '00').slice(0, 2))
+  const negative = s.startsWith('-')
+  const [int, frac = ''] = s.replace(/^[-+]/, '').split('.')
+  const kopecks = Number(int) * 100 + Number((frac + '00').slice(0, 2))
+  return negative ? -kopecks : kopecks
 }
 
 export function fromKopecks(kopecks: number): string {
@@ -17,5 +19,5 @@ export function fromKopecks(kopecks: number): string {
 
 export const sumKopecks = (values: Array<string | number>): number => values.reduce<number>((s, v) => s + toKopecks(v), 0)
 
-/** Нормализация ввода пользователя в формат API: «72000,5» → «72000.50». */
-export const normalizeMoney = (value: string): string => fromKopecks(toKopecks(value))
+/** Нормализация ввода пользователя и ответов API к одному виду: «72000,5» → «72000.50», «0» → «0.00». */
+export const normalizeMoney = (value: string | number): string => fromKopecks(toKopecks(value))

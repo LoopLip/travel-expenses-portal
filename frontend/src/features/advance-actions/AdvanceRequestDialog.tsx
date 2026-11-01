@@ -23,8 +23,8 @@ const FORM_ID = 'advance-request-form'
 /** Диалог «Запросить аванс»: валидация формата и лимита, блокировка кнопки, уведомление. */
 export default function AdvanceRequestDialog({ open, onClose, tripId }: Props) {
   const [submitting, setSubmitting] = useState(false)
-  const data = useQuery(async () => {
-    const [trips, advances] = await Promise.all([tripApi.list(), advanceApi.list()])
+  const data = useQuery(async (signal) => {
+    const [trips, advances] = await Promise.all([tripApi.list({}, signal), advanceApi.list({}, signal)])
     return { trips, advances }
   })
 

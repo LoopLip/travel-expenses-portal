@@ -1,6 +1,7 @@
-﻿import { http, tokenStore } from '@/shared/api'
+﻿import { MAX_LIST_LIMIT, http, tokenStore } from '@/shared/api'
 import type { TokenResponse } from '@/shared/api'
 import type { SessionUser } from '../model/types'
+import { toUser, toUsers } from './mappers'
 
 export interface RegisterData {
   full_name: string
@@ -9,14 +10,16 @@ export interface RegisterData {
   department?: string
 }
 
-/** Реальные запросы к backend (/auth/*). Остальные данные приложения до ЛР №5 — демонстрационные. */
+/** Запросы аутентификации (/auth/*). */
 export const authApi = {
-  register: (data: RegisterData) =>
-    http.request<SessionUser>('/auth/register', {
-      method: 'POST',
-      auth: false,
-      json: { ...data, department: data.department?.trim() || null },
-    }),
+  register: (data: RegisterData): Promise<SessionUser> =>
+    http
+      .request<unknown>('/auth/register', {
+        method: 'POST',
+        auth: false,
+        json: { ...data, department: data.department?.trim() || null },
+      })
+      .then(toUser),
 
   /** Вход: access-токен сохраняется в памяти, refresh-токен браузер получает в HttpOnly-cookie. */
   async login(email: string, password: string): Promise<void> {
@@ -24,7 +27,7 @@ export const authApi = {
     tokenStore.set(res.access_token)
   },
 
-  me: () => http.request<SessionUser>('/auth/me'),
+  me: (): Promise<SessionUser> => http.request<unknown>('/auth/me').then(toUser),
 
   /** Тихое восстановление сессии после перезагрузки страницы: refresh-cookie → новый access-токен. */
   restore: () => http.refresh(),
@@ -39,7 +42,9 @@ export const authApi = {
   },
 }
 
-/** Список пользователей (GET /users): только руководитель и бухгалтер, остальным backend отвечает 403. */
-export const accountsApi = {
-  list: () => http.request<SessionUser[]>('/users'),
+/** Пользователи (/users). Список доступен руководителю и бухгалтеру; свой профиль может прочитать каждый. */
+export const usersApi = {
+  list: (signal?: AbortSignal): Promise<SessionUser[]> =>
+    http.request<unknown>('/users', { params: { limit: MAX_LIST_LIMIT }, signal }).then(toUsers),
+  get: (id: number, signal?: AbortSignal): Promise<SessionUser> => http.request<unknown>(`/users/${id}`, { signal }).then(toUser),
 }

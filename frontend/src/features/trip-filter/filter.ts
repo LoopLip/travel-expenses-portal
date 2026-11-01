@@ -1,5 +1,4 @@
-﻿import type { Trip, TripStatus } from '@/entities/trip'
-import type { User } from '@/entities/user'
+﻿import type { TripListFilter, TripStatus } from '@/entities/trip'
 
 export interface TripFilterState {
   search: string
@@ -8,13 +7,13 @@ export interface TripFilterState {
 
 export const initialTripFilter: TripFilterState = { search: '', status: 'all' }
 
-/** Фильтр списка командировок: статус + поиск по направлению, цели и ФИО сотрудника. */
-export function applyTripFilter(trips: Trip[], users: User[], filter: TripFilterState): Trip[] {
-  const q = filter.search.trim().toLowerCase()
-  const names = new Map(users.map((u) => [u.id, u.full_name.toLowerCase()]))
-  return trips.filter((t) => {
-    if (filter.status !== 'all' && t.status !== filter.status) return false
-    if (!q) return true
-    return [t.destination, t.purpose, names.get(t.user_id) ?? ''].some((s) => s.toLowerCase().includes(q))
-  })
+/** Состояние фильтра → параметры GET /trips: отбор по статусу и поиск выполняет сервер. */
+export function toTripListFilter(filter: TripFilterState): TripListFilter {
+  const q = filter.search.trim()
+  return {
+    status: filter.status === 'all' ? undefined : filter.status,
+    q: q || undefined,
+  }
 }
+
+export const isFilterActive = (filter: TripFilterState): boolean => filter.status !== 'all' || filter.search.trim() !== ''

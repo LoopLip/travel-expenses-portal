@@ -9,9 +9,9 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { AdvanceStatusChip, advanceApi } from '@/entities/advance'
 import { budgetApi } from '@/entities/budget'
+import { useSession, usersApi } from '@/entities/session'
 import { categoryLabel, expenseApi } from '@/entities/expense'
 import { TripStatusChip, tripApi } from '@/entities/trip'
-import { userApi } from '@/entities/user'
 import { AdvanceRequestDialog, AdvanceStatusMenu, DeleteAdvanceButton, advanceLimitError } from '@/features/advance-actions'
 import { DeleteExpenseButton, ExpenseDialog } from '@/features/expense-actions'
 import { DeleteTripButton } from '@/features/trip-delete'
@@ -20,7 +20,6 @@ import { ApiError } from '@/shared/api'
 import { formatDate, formatMoney, fromKopecks, sumKopecks, toKopecks, useQuery } from '@/shared/lib'
 import { EmptyState, FadeRow, PageHeader, QueryBoundary } from '@/shared/ui'
 import NotFoundPage from './NotFoundPage'
-import { useSession } from '@/entities/session'
 
 type Tab = 'advances' | 'expenses' | 'summary'
 
@@ -34,34 +33,30 @@ export default function TripDetailsPage() {
   const [advanceOpen, setAdvanceOpen] = useState(false)
   const [expenseOpen, setExpenseOpen] = useState(false)
 
-  const query = useQuery(async () => {
-    try {
-      const trip = await tripApi.get(tripId)
+  const query = useQuery(
+    async (signal) => {
+      // Командировка, затем её авансы и расходы (фильтр trip_id на сервере), бюджет и сотрудник — параллельно
+      if (!Number.isInteger(tripId) || tripId <= 0) throw new ApiError(404, 'Запись не найдена') // адрес вида /trips/abc
+      const trip = await tripApi.get(tripId, signal)
       const [advances, expenses, budget, user] = await Promise.all([
-        advanceApi.list(), expenseApi.list(), budgetApi.get(trip.budget_id), userApi.get(trip.user_id),
+        advanceApi.list({ trip_id: tripId }, signal),
+        expenseApi.list({ trip_id: tripId }, signal),
+        budgetApi.get(trip.budget_id, signal),
+        usersApi.get(trip.user_id, signal),
       ])
-      return {
-        trip,
-        budget,
-        user,
-        advances: advances.filter((a) => a.trip_id === tripId),
-        expenses: expenses.filter((e) => e.trip_id === tripId),
-      }
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 404) return null
-      throw e
-    }
-  }, [tripId])
+      return { trip, budget, user, advances, expenses }
+    },
+    [tripId],
+  )
 
-  if (query.data === null) return <NotFoundPage />
+  // Нет записи или она чужая (сервер отвечает 404 и в том, и в другом случае)
+  if (query.errorStatus === 404) return <NotFoundPage />
 
   return (
     <>
       <Button component={RouterLink} to="/trips" startIcon={<ArrowBackIcon />} sx={{ mb: 1 }}>К списку</Button>
       <QueryBoundary query={query} isEmpty={() => false} empty={{ title: '' }} skeletonRows={5}>
-        {(data) => {
-          if (!data) return null
-          const { trip, budget, user, advances, expenses } = data
+        {({ trip, budget, user, advances, expenses }) => {
           const issued = sumKopecks(advances.map((a) => a.amount))
           const spent = sumKopecks(expenses.map((e) => e.amount))
           const planned = toKopecks(trip.planned_amount)

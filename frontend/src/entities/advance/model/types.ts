@@ -1,6 +1,6 @@
 ﻿export type AdvanceStatus = 'requested' | 'issued' | 'settled'
 
-/** Соответствует AdvanceOut. */
+/** Аванс (ответ AdvanceOut). Дату запроса ставит сервер. */
 export interface Advance {
   id: number
   trip_id: number
@@ -14,4 +14,11 @@ export interface AdvanceCreate {
   amount: string
 }
 
+/** Сумму может менять любой, кому виден аванс; статус — только бухгалтер (permissions.py). */
 export type AdvanceUpdate = Partial<{ amount: string; status: AdvanceStatus }>
+
+/** Фильтры GET /advances. */
+export interface AdvanceListFilter {
+  trip_id?: number
+  status?: AdvanceStatus
+}

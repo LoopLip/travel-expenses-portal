@@ -6,7 +6,7 @@ import { tripFormSchema } from '@/entities/trip'
 import type { Trip, TripFormValues } from '@/entities/trip'
 import type { Budget } from '@/entities/budget'
 import type { SessionUser } from '@/entities/session'
-import { errorMessage } from '@/shared/api'
+import { applyServerErrors } from '@/shared/lib'
 import { FormField, useNotify } from '@/shared/ui'
 import { createTrip, updateTrip } from './saveTrip'
 
@@ -20,12 +20,14 @@ interface Props {
   onCancel: () => void
 }
 
-/** Форма создания и редактирования командировки с клиентской валидацией (zod). */
+const TRIP_FIELDS = ['destination', 'purpose', 'start_date', 'end_date', 'planned_amount', 'user_id', 'budget_id'] as const
+
+/** Форма создания и редактирования командировки: клиентская валидация (zod) и ошибки сервера у полей. */
 export default function TripForm({ trip, users, currentUserId, budgets, onSaved, onCancel }: Props) {
   const chooseEmployee = users.length > 0
   const notify = useNotify()
   const [serverError, setServerError] = useState<string | null>(null)
-  const { control, handleSubmit, formState } = useForm<TripFormValues>({
+  const { control, handleSubmit, formState, setError } = useForm<TripFormValues>({
     resolver: zodResolver(tripFormSchema),
     mode: 'onTouched',
     defaultValues: {
@@ -46,7 +48,8 @@ export default function TripForm({ trip, users, currentUserId, budgets, onSaved,
       notify(trip ? 'Командировка сохранена' : 'Командировка создана')
       onSaved(saved)
     } catch (e) {
-      setServerError(errorMessage(e))
+      // 422 — под полями формы, остальное (400 лимит авансов, 403, 404, сеть) — общим сообщением
+      setServerError(applyServerErrors(e, setError, TRIP_FIELDS))
     }
   })
 

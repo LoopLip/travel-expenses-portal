@@ -1,4 +1,4 @@
-﻿import { ApiError, isAbortError, networkError } from './errors'
+﻿import { ApiError, VALIDATION_MESSAGE, isAbortError, networkError } from './errors'
 import { isValidationList, translateValidation } from './validation'
 
 export interface TokenResponse {
@@ -44,7 +44,7 @@ const FALLBACK_MESSAGES: Record<number, string> = {
   403: 'Недостаточно прав для этого действия',
   404: 'Запись не найдена',
   409: 'Операция конфликтует с текущими данными',
-  422: 'Проверьте правильность введённых данных',
+  422: VALIDATION_MESSAGE,
 }
 
 /**

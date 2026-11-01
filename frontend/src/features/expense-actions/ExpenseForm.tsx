@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
@@ -6,7 +6,7 @@ import { Alert, Button, Collapse, Grid, MenuItem, Stack } from '@mui/material'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import { categoryLabel, expenseCategories, expenseFormSchema } from '@/entities/expense'
 import type { Expense, ExpenseFormValues } from '@/entities/expense'
-import { errorMessage } from '@/shared/api'
+import { applyServerErrors } from '@/shared/lib'
 import { FormField, useNotify } from '@/shared/ui'
 import { DEMO_RECOGNIZED, createExpense } from './createExpense'
 
@@ -21,12 +21,14 @@ interface Props {
   onCancel?: () => void
 }
 
-/** Форма расхода: валидация zod, предзаполнение суммы и даты по «фото чека» (имитация). */
+const EXPENSE_FIELDS = ['trip_id', 'category', 'description', 'amount', 'expense_date'] as const
+
+/** Форма расхода: валидация zod и ошибки сервера у полей, предзаполнение суммы и даты по «фото чека» (имитация). */
 export default function ExpenseForm({ trips, tripId, formId = 'expense-form', onSubmittingChange, onSaved, onCancel }: Props) {
   const notify = useNotify()
   const [receipt, setReceipt] = useState<string | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
-  const { control, handleSubmit, setValue, formState } = useForm<ExpenseFormValues>({
+  const { control, handleSubmit, setValue, setError, formState } = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseFormSchema),
     mode: 'onTouched',
     defaultValues: { trip_id: tripId ? String(tripId) : '', category: 'transport', description: '', amount: '', expense_date: '' },
@@ -48,7 +50,7 @@ export default function ExpenseForm({ trips, tripId, formId = 'expense-form', on
       notify('Расход добавлен')
       onSaved(saved)
     } catch (e) {
-      setServerError(errorMessage(e))
+      setServerError(applyServerErrors(e, setError, EXPENSE_FIELDS))
     } finally {
       onSubmittingChange?.(false)
     }

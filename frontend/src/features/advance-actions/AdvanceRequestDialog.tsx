@@ -4,8 +4,7 @@ import { useForm, useWatch } from 'react-hook-form'
 import { Alert, Collapse, Grid, MenuItem } from '@mui/material'
 import { advanceApi } from '@/entities/advance'
 import { tripApi } from '@/entities/trip'
-import { errorMessage } from '@/shared/api'
-import { formatMoney, fromKopecks, sumKopecks, toKopecks, useQuery } from '@/shared/lib'
+import { applyServerErrors, formatMoney, fromKopecks, sumKopecks, toKopecks, useQuery } from '@/shared/lib'
 import { ErrorState, FormDialog, FormField, LoadingState, useNotify } from '@/shared/ui'
 import { requestAdvance } from './requestAdvance'
 import { makeAdvanceFormSchema } from './schema'
@@ -66,7 +65,7 @@ function AdvanceForm({ trips, issuedByTrip, tripId, setSubmitting, onDone }: For
   }, [trips, issuedByTrip])
   const schema = useMemo(() => makeAdvanceFormSchema(limits), [limits])
 
-  const { control, handleSubmit } = useForm<AdvanceFormValues>({
+  const { control, handleSubmit, setError } = useForm<AdvanceFormValues>({
     resolver: zodResolver(schema),
     mode: 'onTouched',
     defaultValues: { trip_id: tripId ? String(tripId) : '', amount: '' },
@@ -82,7 +81,7 @@ function AdvanceForm({ trips, issuedByTrip, tripId, setSubmitting, onDone }: For
       notify('Аванс запрошен')
       onDone()
     } catch (e) {
-      setServerError(errorMessage(e))
+      setServerError(applyServerErrors(e, setError, ['trip_id', 'amount']))
     } finally {
       setSubmitting(false)
     }

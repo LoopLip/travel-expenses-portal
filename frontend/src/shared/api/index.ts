@@ -1,4 +1,4 @@
-﻿export { ApiError, NETWORK_ERROR, errorMessage, isAbortError, networkError } from './errors'
+﻿export { ApiError, NETWORK_ERROR, VALIDATION_MESSAGE, errorMessage, isAbortError, networkError } from './errors'
 export { subscribeToChanges, notifyDataChanged } from './bus'
 export { http, mutate } from './http'
 export { createHttpClient, readError, buildQuery } from './httpClient'

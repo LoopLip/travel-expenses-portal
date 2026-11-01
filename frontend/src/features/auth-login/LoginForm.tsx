@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
@@ -6,7 +6,7 @@ import { Alert, Button, Collapse, Link, Stack, Typography } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
 import { loginSchema, useSession } from '@/entities/session'
 import type { LoginValues } from '@/entities/session'
-import { errorMessage } from '@/shared/api'
+import { applyServerErrors } from '@/shared/lib'
 import { FormField } from '@/shared/ui'
 
 /** Форма входа: проверка полей на клиенте, ошибка сервера («Неверный email или пароль») под формой. */
@@ -14,7 +14,7 @@ export default function LoginForm() {
   const { login } = useSession()
   const navigate = useNavigate()
   const [serverError, setServerError] = useState<string | null>(null)
-  const { control, handleSubmit, formState } = useForm<LoginValues>({
+  const { control, handleSubmit, formState, setError } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     mode: 'onTouched',
     defaultValues: { email: '', password: '' },
@@ -26,7 +26,7 @@ export default function LoginForm() {
       await login(values.email, values.password)
       navigate('/', { replace: true }) // GuestRoute перенаправит на запрошенную страницу, если она была
     } catch (e) {
-      setServerError(errorMessage(e))
+      setServerError(applyServerErrors(e, setError, ['email', 'password']))
     }
   })
 

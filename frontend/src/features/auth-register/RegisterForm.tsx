@@ -1,11 +1,11 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { Alert, Button, Collapse, Link, Stack, Typography } from '@mui/material'
 import { registerSchema, useSession } from '@/entities/session'
 import type { RegisterValues } from '@/entities/session'
-import { errorMessage } from '@/shared/api'
+import { applyServerErrors } from '@/shared/lib'
 import { FormField } from '@/shared/ui'
 
 /** Форма регистрации. Роль выбрать нельзя: новый пользователь всегда сотрудник. После успеха выполняется вход. */
@@ -13,7 +13,7 @@ export default function RegisterForm() {
   const { register } = useSession()
   const navigate = useNavigate()
   const [serverError, setServerError] = useState<string | null>(null)
-  const { control, handleSubmit, formState } = useForm<RegisterValues>({
+  const { control, handleSubmit, formState, setError } = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
     mode: 'onTouched',
     defaultValues: { full_name: '', email: '', department: '', password: '', confirm: '' },
@@ -25,7 +25,7 @@ export default function RegisterForm() {
       await register({ full_name: values.full_name, email: values.email, password: values.password, department: values.department })
       navigate('/', { replace: true })
     } catch (e) {
-      setServerError(errorMessage(e))
+      setServerError(applyServerErrors(e, setError, ['full_name', 'email', 'department', 'password']))
     }
   })
 

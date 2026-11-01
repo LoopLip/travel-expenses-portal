@@ -4,6 +4,7 @@
 // TOKEN_WAIT_MS (ожидание истечения access-токена, по умолчанию 8000; 0 — пропустить шаг).
 // Каждый прогон создаёт своих пользователей и записи с уникальной меткой, поэтому не зависит от данных в БД и не мешает им.
 import { chromium } from 'playwright-core'
+import { fileURLToPath } from 'node:url'
 import { API, apiLogin, ensureBackend, loginUi as loginUiRaw, provisionUsers } from './e2e-env.mjs'
 
 const base = process.env.BASE_URL ?? 'http://127.0.0.1:5173'
@@ -24,6 +25,12 @@ async function step(name, fn) {
   }
 }
 const assert = (cond, msg) => { if (!cond) throw new Error(msg) }
+/** Шаг, который нельзя выполнить в этом окружении (например, на сервере нет Tesseract): честно пропускаем, а не падаем. */
+function skip(name, reason) {
+  results.push({ name, ok: true, skipped: true })
+  console.log(`SKIP ${name}\n     ${reason}`)
+}
+const RECEIPT_FIXTURE = fileURLToPath(new URL('../../backend/tests/fixtures/receipt_clean.png', import.meta.url))
 
 await ensureBackend()
 const users = await provisionUsers()
@@ -161,6 +168,34 @@ let tripId = 0
     await snackbar(page, 'Расход удалён')
     await page.getByText('Расходов пока нет').waitFor()
   })
+  const ocr = (await api((await apiLogin(fresh)).access, 'GET', '/receipts/status')).body
+  if (ocr.available) {
+    await step('Фото чека: сумма и дата подставлены, расход сохранён с чеком, «Открыть чек» показывает файл', async () => {
+      await page.getByRole('button', { name: 'Добавить расход' }).click()
+      // ждём ответа /receipts/status: пока он не пришёл, кнопка загрузки неактивна
+      await page.waitForFunction(() => document.querySelector('[data-testid="receipt-input"]')?.disabled === false)
+      await page.getByTestId('receipt-input').setInputFiles(RECEIPT_FIXTURE)
+      await page.getByTestId('receipt-outcome').waitFor({ timeout: 30000 }) // настоящий Tesseract работает несколько секунд
+      assert((await page.getByLabel('Сумма, ₽').inputValue()) === '1234.50', 'сумма из чека: ' + (await page.getByLabel('Сумма, ₽').inputValue()))
+      assert((await page.getByLabel('Дата').inputValue()) === '2026-10-12', 'дата из чека: ' + (await page.getByLabel('Дата').inputValue()))
+      await page.getByText('Подставлено из чека. Проверьте').first().waitFor()
+      await page.getByLabel('Описание').fill('Билет по чеку')
+      await page.getByRole('dialog').getByRole('button', { name: 'Сохранить' }).click()
+      await snackbar(page, 'Расход добавлен')
+      const item = page.getByTestId('expense-item').filter({ hasText: 'Билет по чеку' })
+      const [tab] = await Promise.all([page.context().waitForEvent('page'), item.getByRole('button', { name: 'Открыть чек' }).click()])
+      await tab.waitForFunction(() => location.href.startsWith('blob:') && document.querySelector('img')?.naturalWidth > 0)
+      await tab.close()
+    })
+  } else {
+    skip('Фото чека: распознавание и «Открыть чек»', 'на сервере нет Tesseract (GET /receipts/status → available: false)')
+    await step('Без Tesseract кнопка «Загрузить фото чека» отключена с подсказкой, расход вводится вручную', async () => {
+      await page.getByRole('button', { name: 'Добавить расход' }).click()
+      await page.getByTestId('receipt-unavailable').waitFor()
+      assert(await page.getByRole('button', { name: 'Загрузить фото чека' }).isDisabled(), 'кнопка должна быть отключена')
+      await page.getByRole('dialog').getByRole('button', { name: 'Отмена' }).click()
+    })
+  }
   await step('Сотрудник отправляет заявку на согласование: доступны только «Черновик» и «На согласовании»', async () => {
     await page.getByRole('button', { name: 'Изменить статус' }).click()
     const items = await page.getByRole('menuitem').allInnerTexts()
@@ -410,5 +445,6 @@ await step('Ошибок в консоли браузера нет', async () =>
 
 await browser.close()
 const failed = results.filter((r) => !r.ok)
-console.log(`\nИтого: ${results.length - failed.length} из ${results.length} шагов успешно`)
+const skipped = results.filter((r) => r.skipped).length
+console.log(`\nИтого: ${results.length - failed.length} из ${results.length} шагов успешно${skipped ? ` (пропущено: ${skipped})` : ''}`)
 process.exit(failed.length ? 1 : 0)

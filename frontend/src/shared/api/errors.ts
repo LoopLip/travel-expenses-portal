@@ -1,4 +1,4 @@
-﻿/** Статус «нет ответа сервера» (сеть, CORS, backend не запущен): HTTP-кода нет. */
+/** Статус «нет ответа сервера» (сеть, CORS, backend не запущен): HTTP-кода нет. */
 export const NETWORK_ERROR = 0
 
 export class ApiError extends Error {
@@ -22,8 +22,6 @@ export function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message
   return 'Неизвестная ошибка'
 }
-
-export const notFound = (label: string, id: number) => new ApiError(404, `${label} с id=${id} не найден(а)`)
 
 /** Общий текст ошибки 422, когда все замечания относятся к конкретным полям формы. */
 export const VALIDATION_MESSAGE = 'Проверьте правильность введённых данных'

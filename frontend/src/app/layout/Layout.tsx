@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
-  AppBar, Box, Container, Divider, Drawer, Fade, IconButton, List, ListItemButton, ListItemIcon,
+  AppBar, Box, Container, Drawer, Fade, IconButton, List, ListItemButton, ListItemIcon,
   ListItemText, Toolbar, Typography, useMediaQuery,
 } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
@@ -14,7 +14,6 @@ import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import PeopleIcon from '@mui/icons-material/People'
 import { usePermissions } from '@/entities/session'
 import { UserMenu } from '@/features/user-menu'
-import { DemoControls } from '@/features/demo-controls'
 import { useMotionTimeout } from '@/shared/lib'
 
 const DRAWER_WIDTH = 240
@@ -57,8 +56,6 @@ export default function Layout() {
           </ListItemButton>
         ))}
       </List>
-      <Divider />
-      <DemoControls />
     </Box>
   )
 

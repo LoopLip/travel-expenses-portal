@@ -105,10 +105,14 @@ export default function TripDetailsPage() {
                       <TransitionGroup component={null}>
                         {advances.map((a) => (
                           <FadeRow key={a.id}>
-                            <ListItem divider disableGutters data-testid="advance-item"
-                              secondaryAction={<Stack direction="row" sx={{ alignItems: 'center' }}>{allow.changeAdvanceStatus() && <AdvanceStatusMenu advance={a} />}{allow.writeAdvance() && <><EditAdvanceButton advance={a} /><DeleteAdvanceButton advance={a} /></>}</Stack>}>
-                              <ListItemText primary={formatMoney(a.amount)} secondary={`Запрос от ${formatDate(a.requested_at)}`} sx={{ pr: 24 }} />
-                              <AdvanceStatusChip status={a.status} />
+                            <ListItem divider disableGutters data-testid="advance-item" sx={{ gap: 1, flexWrap: 'wrap' }}>
+                              <ListItemText primary={formatMoney(a.amount)} secondary={`Запрос от ${formatDate(a.requested_at)}`} sx={{ flex: '1 1 160px', minWidth: 0 }} />
+                              {/* Чип и действия — одной группой справа: на узком экране группа переносится, а не наезжает на текст */}
+                              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', flexShrink: 0 }}>
+                                <AdvanceStatusChip status={a.status} />
+                                {allow.changeAdvanceStatus() && <AdvanceStatusMenu advance={a} />}
+                                {allow.writeAdvance() && <><EditAdvanceButton advance={a} /><DeleteAdvanceButton advance={a} /></>}
+                              </Stack>
                             </ListItem>
                           </FadeRow>
                         ))}
@@ -128,10 +132,13 @@ export default function TripDetailsPage() {
                       <TransitionGroup component={null}>
                         {expenses.map((e) => (
                           <FadeRow key={e.id}>
-                            <ListItem divider disableGutters data-testid="expense-item"
-                              secondaryAction={<Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}><Typography>{formatMoney(e.amount)}</Typography>{allow.writeExpense() && <><EditExpenseButton expense={e} /><DeleteExpenseButton expense={e} /></>}</Stack>}>
-                              <ListItemText primary={e.description} secondary={`${categoryLabel[e.category]} · ${formatDate(e.expense_date)}`} sx={{ pr: 20 }} />
-                              {e.receipt_url ? <Chip size="small" color="success" variant="outlined" label="Чек" /> : <Chip size="small" color="warning" variant="outlined" label="Без чека" />}
+                            <ListItem divider disableGutters data-testid="expense-item" sx={{ gap: 1, flexWrap: 'wrap' }}>
+                              <ListItemText primary={e.description} secondary={`${categoryLabel[e.category]} · ${formatDate(e.expense_date)}`} sx={{ flex: '1 1 200px', minWidth: 0 }} />
+                              <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexShrink: 0 }}>
+                                {e.receipt_url ? <Chip size="small" color="success" variant="outlined" label="Чек" /> : <Chip size="small" color="warning" variant="outlined" label="Без чека" />}
+                                <Typography sx={{ minWidth: 88, textAlign: 'right' }}>{formatMoney(e.amount)}</Typography>
+                                {allow.writeExpense() && <><EditExpenseButton expense={e} /><DeleteExpenseButton expense={e} /></>}
+                              </Stack>
                             </ListItem>
                           </FadeRow>
                         ))}

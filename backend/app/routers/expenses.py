@@ -1,11 +1,12 @@
 ﻿from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi.responses import FileResponse
 
-from app import crud, permissions, schemas
+from app import crud, permissions, receipt_ocr, schemas
 from app.deps import DB, CurrentUser, get_current_user
-from app.models import ExpenseCategory, Role
+from app.models import ExpenseCategory
+from app.permissions import EXPENSE_WRITERS
 
 router = APIRouter(prefix="/expenses", tags=["expenses"], dependencies=[Depends(get_current_user)])
-EXPENSE_WRITERS = (Role.employee, Role.manager)  # бухгалтер расходы только просматривает
 
 
 @router.get("", response_model=list[schemas.ExpenseOut])
@@ -33,6 +34,18 @@ def get_expense(expense_id: int, db: DB, actor: CurrentUser):
     expense = crud.get_expense(db, expense_id)
     permissions.ensure_expense_visible(actor, expense)
     return expense
+
+
+@router.get("/{expense_id}/receipt", response_class=FileResponse, responses={404: {"description": "Файл чека недоступен"}})
+def get_expense_receipt(expense_id: int, db: DB, actor: CurrentUser):
+    """Файл чека. Только тем, кто видит расход; чужой расход для сотрудника — 404.
+    Старые записи с условными именами (до распознавания) и любые подозрительные пути тоже дают 404."""
+    expense = crud.get_expense(db, expense_id)
+    permissions.ensure_expense_visible(actor, expense)
+    path = receipt_ocr.receipt_path(expense.receipt_url)
+    if path is None:
+        raise crud.NotFoundError("Файл чека недоступен")
+    return FileResponse(path, media_type=receipt_ocr.media_type(path))
 
 
 @router.patch("/{expense_id}", response_model=schemas.ExpenseOut)

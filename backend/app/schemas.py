@@ -191,3 +191,19 @@ class ExpenseOut(ORMModel):
 class TripDetail(TripOut):
     advances: list[AdvanceOut]
     expenses: list[ExpenseOut]
+
+
+# ---------- receipts ----------
+class ReceiptStatus(BaseModel):
+    available: bool  # установлен ли Tesseract с нужными языками
+    languages: list[str]
+
+
+class ReceiptRecognition(BaseModel):
+    """Предложение для формы расхода. В таблицу расходов ничего не записывается; распознанный текст не возвращается."""
+
+    receipt_url: str  # receipts/<uuid>.<ext> — уходит в расход вместе с остальными полями
+    amount: Decimal | None
+    expense_date: date | None
+    recognized: bool
+    message: str

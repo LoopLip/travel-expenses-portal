@@ -4,10 +4,10 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app import crud, models  # noqa: F401  (models нужны, чтобы таблицы попали в metadata)
+from app import crud, models, receipt_ocr  # noqa: F401  (models нужны, чтобы таблицы попали в metadata)
 from app.config import settings
 from app.db import Base, engine
-from app.routers import advances, auth, budgets, expenses, trips, users
+from app.routers import advances, auth, budgets, expenses, receipts, trips, users
 
 
 @asynccontextmanager
@@ -47,7 +47,15 @@ async def _unauthorized(_: Request, exc: Exception):
 
 app.add_exception_handler(crud.AuthenticationError, _unauthorized)
 
-for r in (auth, users, budgets, trips, advances, expenses):
+
+async def _receipt_error(_: Request, exc: Exception):
+    status_code = exc.status_code if isinstance(exc, receipt_ocr.ReceiptError) else 400
+    return JSONResponse(status_code=status_code, content={"detail": str(exc)})
+
+
+app.add_exception_handler(receipt_ocr.ReceiptError, _receipt_error)
+
+for r in (auth, users, budgets, trips, advances, expenses, receipts):
     app.include_router(r.router)
 
 

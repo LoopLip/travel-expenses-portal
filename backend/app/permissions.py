@@ -7,6 +7,7 @@ from app import crud, models
 from app.models import Role, TripStatus
 
 STAFF = (Role.manager, Role.accountant)
+EXPENSE_WRITERS = (Role.employee, Role.manager)  # бухгалтер расходы и чеки только просматривает
 EMPLOYEE_ALLOWED_STATUSES = (TripStatus.draft, TripStatus.pending)
 
 

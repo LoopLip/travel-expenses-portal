@@ -12,8 +12,8 @@ import { budgetApi } from '@/entities/budget'
 import { usePermissions, usersApi } from '@/entities/session'
 import { categoryLabel, expenseApi } from '@/entities/expense'
 import { TripStatusChip, tripApi } from '@/entities/trip'
-import { AdvanceRequestDialog, AdvanceStatusMenu, DeleteAdvanceButton, advanceLimitError } from '@/features/advance-actions'
-import { DeleteExpenseButton, ExpenseDialog } from '@/features/expense-actions'
+import { AdvanceRequestDialog, AdvanceStatusMenu, DeleteAdvanceButton, EditAdvanceButton, advanceLimitError } from '@/features/advance-actions'
+import { DeleteExpenseButton, EditExpenseButton, ExpenseDialog } from '@/features/expense-actions'
 import { DeleteTripButton } from '@/features/trip-delete'
 import { TripStatusMenu } from '@/features/trip-status'
 import { ApiError } from '@/shared/api'
@@ -106,8 +106,8 @@ export default function TripDetailsPage() {
                         {advances.map((a) => (
                           <FadeRow key={a.id}>
                             <ListItem divider disableGutters data-testid="advance-item"
-                              secondaryAction={<Stack direction="row" sx={{ alignItems: 'center' }}>{allow.changeAdvanceStatus() && <AdvanceStatusMenu advance={a} />}<DeleteAdvanceButton advance={a} /></Stack>}>
-                              <ListItemText primary={formatMoney(a.amount)} secondary={`Запрос от ${formatDate(a.requested_at)}`} sx={{ pr: 18 }} />
+                              secondaryAction={<Stack direction="row" sx={{ alignItems: 'center' }}>{allow.changeAdvanceStatus() && <AdvanceStatusMenu advance={a} />}{allow.writeAdvance() && <><EditAdvanceButton advance={a} /><DeleteAdvanceButton advance={a} /></>}</Stack>}>
+                              <ListItemText primary={formatMoney(a.amount)} secondary={`Запрос от ${formatDate(a.requested_at)}`} sx={{ pr: 24 }} />
                               <AdvanceStatusChip status={a.status} />
                             </ListItem>
                           </FadeRow>
@@ -129,8 +129,8 @@ export default function TripDetailsPage() {
                         {expenses.map((e) => (
                           <FadeRow key={e.id}>
                             <ListItem divider disableGutters data-testid="expense-item"
-                              secondaryAction={<Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}><Typography>{formatMoney(e.amount)}</Typography>{allow.writeExpense() && <DeleteExpenseButton expense={e} />}</Stack>}>
-                              <ListItemText primary={e.description} secondary={`${categoryLabel[e.category]} · ${formatDate(e.expense_date)}`} sx={{ pr: 14 }} />
+                              secondaryAction={<Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}><Typography>{formatMoney(e.amount)}</Typography>{allow.writeExpense() && <><EditExpenseButton expense={e} /><DeleteExpenseButton expense={e} /></>}</Stack>}>
+                              <ListItemText primary={e.description} secondary={`${categoryLabel[e.category]} · ${formatDate(e.expense_date)}`} sx={{ pr: 20 }} />
                               {e.receipt_url ? <Chip size="small" color="success" variant="outlined" label="Чек" /> : <Chip size="small" color="warning" variant="outlined" label="Без чека" />}
                             </ListItem>
                           </FadeRow>

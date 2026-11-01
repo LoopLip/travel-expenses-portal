@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { Alert, Button, Collapse, Grid, MenuItem, Stack } from '@mui/material'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
-import { categoryLabel, expenseCategories, expenseFormSchema } from '@/entities/expense'
+import { categoryLabel, expenseApi, expenseCategories, expenseFormSchema, toExpenseUpdate } from '@/entities/expense'
 import type { Expense, ExpenseFormValues } from '@/entities/expense'
 import { applyServerErrors } from '@/shared/lib'
 import { FormField, useNotify } from '@/shared/ui'
@@ -14,6 +14,8 @@ interface Props {
   trips: Array<{ id: number; label: string }>
   /** Командировка выбрана заранее (из карточки поездки). */
   tripId?: number
+  /** Если задан — редактирование этого расхода (PATCH), иначе создание (POST). */
+  expense?: Expense
   formId?: string
   onSubmittingChange?: (v: boolean) => void
   onSaved: (expense: Expense) => void
@@ -24,14 +26,16 @@ interface Props {
 const EXPENSE_FIELDS = ['trip_id', 'category', 'description', 'amount', 'expense_date'] as const
 
 /** Форма расхода: валидация zod и ошибки сервера у полей, предзаполнение суммы и даты по «фото чека» (имитация). */
-export default function ExpenseForm({ trips, tripId, formId = 'expense-form', onSubmittingChange, onSaved, onCancel }: Props) {
+export default function ExpenseForm({ trips, tripId, expense, formId = 'expense-form', onSubmittingChange, onSaved, onCancel }: Props) {
   const notify = useNotify()
-  const [receipt, setReceipt] = useState<string | null>(null)
+  const [receipt, setReceipt] = useState<string | null>(expense?.receipt_url ?? null)
   const [serverError, setServerError] = useState<string | null>(null)
   const { control, handleSubmit, setValue, setError, formState } = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseFormSchema),
     mode: 'onTouched',
-    defaultValues: { trip_id: tripId ? String(tripId) : '', category: 'transport', description: '', amount: '', expense_date: '' },
+    defaultValues: expense
+      ? { trip_id: String(expense.trip_id), category: expense.category, description: expense.description, amount: expense.amount, expense_date: expense.expense_date }
+      : { trip_id: tripId ? String(tripId) : '', category: 'transport', description: '', amount: '', expense_date: '' },
   })
 
   const onFile = (e: ChangeEvent<HTMLInputElement>) => {
@@ -46,8 +50,8 @@ export default function ExpenseForm({ trips, tripId, formId = 'expense-form', on
     setServerError(null)
     onSubmittingChange?.(true)
     try {
-      const saved = await createExpense(values, receipt)
-      notify('Расход добавлен')
+      const saved = expense ? await expenseApi.update(expense.id, toExpenseUpdate(values, receipt)) : await createExpense(values, receipt)
+      notify(expense ? 'Расход сохранён' : 'Расход добавлен')
       onSaved(saved)
     } catch (e) {
       setServerError(applyServerErrors(e, setError, EXPENSE_FIELDS))
@@ -71,7 +75,7 @@ export default function ExpenseForm({ trips, tripId, formId = 'expense-form', on
       </Stack>
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, sm: 6 }}>
-          <FormField control={control} name="trip_id" label="Командировка" select disabled={Boolean(tripId)}>
+          <FormField control={control} name="trip_id" label="Командировка" select disabled={Boolean(tripId || expense)}>
             {trips.map((t) => <MenuItem key={t.id} value={String(t.id)}>{t.label}</MenuItem>)}
           </FormField>
         </Grid>

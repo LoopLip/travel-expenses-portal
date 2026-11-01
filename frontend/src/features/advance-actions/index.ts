@@ -1,4 +1,5 @@
-﻿export { default as AdvanceRequestDialog } from './AdvanceRequestDialog'
+export { default as AdvanceRequestDialog } from './AdvanceRequestDialog'
+export { default as EditAdvanceButton } from './EditAdvanceButton'
 export { AdvanceStatusMenu, DeleteAdvanceButton } from './AdvanceActions'
 export { requestAdvance, advanceLimitError } from './requestAdvance'
 export { makeAdvanceFormSchema } from './schema'

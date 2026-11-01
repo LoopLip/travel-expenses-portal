@@ -6,7 +6,7 @@ import AddIcon from '@mui/icons-material/Add'
 import { AdvanceStatusChip, advanceApi, advanceStatusLabel, advanceStatuses } from '@/entities/advance'
 import type { AdvanceStatus } from '@/entities/advance'
 import { tripApi } from '@/entities/trip'
-import { AdvanceRequestDialog, AdvanceStatusMenu, DeleteAdvanceButton } from '@/features/advance-actions'
+import { AdvanceRequestDialog, AdvanceStatusMenu, DeleteAdvanceButton, EditAdvanceButton } from '@/features/advance-actions'
 import { usePermissions } from '@/entities/session'
 import { formatDate, formatMoney, useQuery } from '@/shared/lib'
 import { FadeRow, PageHeader, QueryBoundary } from '@/shared/ui'
@@ -65,7 +65,7 @@ export default function AdvancesPage() {
                           <TableCell align="right">{formatMoney(a.amount)}</TableCell>
                           <TableCell><AdvanceStatusChip status={a.status} /></TableCell>
                           <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                            <Stack direction="row" sx={{ justifyContent: 'flex-end', alignItems: 'center' }}>{allow.changeAdvanceStatus() && <AdvanceStatusMenu advance={a} />}<DeleteAdvanceButton advance={a} /></Stack>
+                            <Stack direction="row" sx={{ justifyContent: 'flex-end', alignItems: 'center' }}>{allow.changeAdvanceStatus() && <AdvanceStatusMenu advance={a} />}{allow.writeAdvance() && <><EditAdvanceButton advance={a} /><DeleteAdvanceButton advance={a} /></>}</Stack>
                           </TableCell>
                         </TableRow>
                       </FadeRow>

@@ -1,16 +1,26 @@
-﻿export class ApiError extends Error {
-  readonly status: number
+﻿/** Статус «нет ответа сервера» (сеть, CORS, backend не запущен): HTTP-кода нет. */
+export const NETWORK_ERROR = 0
 
-  constructor(status: number, message: string) {
+export class ApiError extends Error {
+  readonly status: number
+  /** Ошибки валидации сервера (422) по полям: имя поля → сообщение на русском. */
+  readonly fieldErrors: Readonly<Record<string, string>>
+
+  constructor(status: number, message: string, fieldErrors: Record<string, string> = {}) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.fieldErrors = fieldErrors
   }
 }
 
-export const notFound = (label: string, id: number) => new ApiError(404, `${label} с id=${id} не найден(а)`)
+export const networkError = () => new ApiError(NETWORK_ERROR, 'Нет связи с сервером. Проверьте подключение и что backend запущен.')
+
+export const isAbortError = (error: unknown): boolean => error instanceof DOMException && error.name === 'AbortError'
 
 export function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message
   return 'Неизвестная ошибка'
 }
+
+export const notFound = (label: string, id: number) => new ApiError(404, `${label} с id=${id} не найден(а)`)

@@ -20,6 +20,7 @@ export default function QueryBoundary<T>({ query, isEmpty, empty, skeletonRows, 
 
   // 403: повторять запрос бессмысленно, показываем понятный отказ в доступе
   if (error && errorStatus === 403) return <ErrorState title="Доступ запрещён" message={error} />
+  if (error && errorStatus === 404) return <ErrorState title="Запись не найдена" message="Возможно, она удалена или у вас нет к ней доступа." />
   if (error) return <ErrorState message={error} onRetry={reload} />
   if (loading || data === undefined) return <LoadingState rows={skeletonRows} />
 

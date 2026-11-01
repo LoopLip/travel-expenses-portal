@@ -1,4 +1,5 @@
-﻿import { ApiError } from './errors'
+﻿import { ApiError, isAbortError, networkError } from './errors'
+import { isValidationList, translateValidation } from './validation'
 
 export interface TokenResponse {
   access_token: string
@@ -14,6 +15,22 @@ export interface RequestOptions {
   form?: Record<string, string>
   /** false — запрос без токена и без попытки обновления (вход, регистрация, обновление токена). */
   auth?: boolean
+  /** Параметры строки запроса; пустые значения (undefined, null, '') не отправляются. */
+  params?: QueryParams
+  /** Отмена запроса (например, когда пользователь сменил фильтр и прежний ответ уже не нужен). */
+  signal?: AbortSignal
+}
+
+export type QueryParams = Record<string, string | number | null | undefined>
+
+/** Строка запроса из параметров: buildQuery({ status: 'draft', q: '' }) → '?status=draft'. */
+export function buildQuery(params: QueryParams = {}): string {
+  const search = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== '') search.set(key, String(value))
+  }
+  const text = search.toString()
+  return text ? `?${text}` : ''
 }
 
 export interface HttpClientDeps {
@@ -30,13 +47,25 @@ const FALLBACK_MESSAGES: Record<number, string> = {
   422: 'Проверьте правильность введённых данных',
 }
 
-/** Достаёт понятный текст ошибки из ответа backend ({"detail": "..."} или список ошибок валидации). */
+/**
+ * Понятная ошибка из ответа backend. Форматы: {"detail": "строка"} (400, 401, 403, 404, 409)
+ * и {"detail": [{type, loc, msg, ctx}]} (422) — второй переводится на русский и раскладывается по полям формы.
+ */
 export async function readError(res: Response): Promise<ApiError> {
   let detail: unknown
   try {
     detail = ((await res.json()) as { detail?: unknown }).detail
   } catch {
     detail = undefined
+  }
+  if (res.status === 422 && isValidationList(detail)) {
+    const { fieldErrors, formErrors } = translateValidation(detail)
+    return new ApiError(422, formErrors[0] ?? FALLBACK_MESSAGES[422], fieldErrors)
+  }
+  // 404 не уточняем: для сотрудника чужая запись тоже «не найдена» (backend не раскрывает, что она существует)
+  if (res.status === 404) return new ApiError(404, FALLBACK_MESSAGES[404])
+  if (res.status === 403 && typeof detail === 'string' && detail && !detail.startsWith('Недостаточно прав')) {
+    return new ApiError(403, `Недостаточно прав. ${detail}`)
   }
   if (typeof detail === 'string' && detail) return new ApiError(res.status, detail)
   if (res.status >= 500) return new ApiError(res.status, 'Ошибка сервера. Попробуйте позже')
@@ -64,7 +93,11 @@ export function createHttpClient({ baseUrl, fetchFn, tokenStore }: HttpClientDep
     }
     const token = tokenStore.get()
     if (opts.auth !== false && token) headers.Authorization = `Bearer ${token}`
-    return fetchFn(`${baseUrl}${path}`, { method: opts.method ?? 'GET', headers, body, credentials: 'include' })
+    const url = `${baseUrl}${path}${buildQuery(opts.params)}`
+    // fetch отклоняет промис только без ответа сервера (сеть, CORS, backend выключен) или при отмене запроса
+    return fetchFn(url, { method: opts.method ?? 'GET', headers, body, credentials: 'include', signal: opts.signal }).catch((e: unknown) => {
+      throw isAbortError(e) ? e : networkError()
+    })
   }
 
   const doRefresh = async (): Promise<boolean> => {
@@ -76,7 +109,9 @@ export function createHttpClient({ baseUrl, fetchFn, tokenStore }: HttpClientDep
       }
       tokenStore.set(((await res.json()) as TokenResponse).access_token)
       return true
-    } catch {
+    } catch (e) {
+      // нет связи с сервером: сессию не сбрасываем, запрос завершится ошибкой сети
+      if (e instanceof ApiError) throw e
       return false
     }
   }

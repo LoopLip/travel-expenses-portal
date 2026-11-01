@@ -2,6 +2,7 @@ import { parseResponse } from '@/shared/api'
 import { apiDate, apiId, apiMoney, normalizeMoney, z } from '@/shared/lib'
 import { expenseCategories } from '../model/labels'
 import type { ExpenseFormValues } from '../model/schema'
+import type { ReceiptRecognition, ReceiptStatus } from '../model/receipt'
 import type { Expense, ExpenseCategory, ExpenseCreate, ExpenseUpdate } from '../model/types'
 
 const expenseDto = z.object({
@@ -33,3 +34,17 @@ export const toExpenseCreate = (v: ExpenseFormValues, receiptUrl: string | null)
 })
 
 export const toExpenseUpdate = (v: ExpenseFormValues, receiptUrl: string | null): ExpenseUpdate => fields(v, receiptUrl)
+
+// ---------- распознавание чека ----------
+const recognitionDto = z.object({
+  receipt_url: z.string(),
+  amount: apiMoney.nullable(),
+  expense_date: apiDate.nullable(),
+  recognized: z.boolean(),
+  message: z.string(),
+})
+
+const statusDto = z.object({ available: z.boolean(), languages: z.array(z.string()) })
+
+export const toReceiptRecognition = (data: unknown): ReceiptRecognition => parseResponse(recognitionDto, data)
+export const toReceiptStatus = (data: unknown): ReceiptStatus => parseResponse(statusDto, data)

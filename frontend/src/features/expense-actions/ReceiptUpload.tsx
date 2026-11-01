@@ -66,19 +66,21 @@ export default function ReceiptUpload({ attached, onBusyChange, onRecognized, on
   }
 
   const unavailableHint = 'Распознавание недоступно на сервере, введите данные вручную'
-  const button = (
-    <span>
-      <Button component="label" variant="outlined" startIcon={<UploadFileIcon />} disabled={!available || busy}>
-        Загрузить фото чека
-        <input hidden type="file" accept={RECEIPT_TYPES.join(',')} onChange={choose} data-testid="receipt-input" />
-      </Button>
-    </span>
-  )
+  const disabled = !available || busy
+  const tooltip = available ? '' : status.loading ? 'Проверяем, доступно ли распознавание…' : unavailableHint
 
   return (
     <Stack spacing={1.5} sx={{ mb: 3 }} data-testid="receipt-upload">
       <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap' }} useFlexGap>
-        {available ? button : <Tooltip title={status.loading ? 'Проверяем, доступно ли распознавание…' : unavailableHint}>{button}</Tooltip>}
+        {/* Обёртка Tooltip есть всегда: иначе при ответе /receipts/status поле выбора файла пересоздаётся и выбранный файл теряется */}
+        <Tooltip title={tooltip}>
+          <span>
+            <Button component="label" variant="outlined" startIcon={<UploadFileIcon />} disabled={disabled}>
+              Загрузить фото чека
+              <input hidden type="file" accept={RECEIPT_TYPES.join(',')} onChange={choose} disabled={disabled} data-testid="receipt-input" />
+            </Button>
+          </span>
+        </Tooltip>
         {(preview || attached) && !busy && <Button color="inherit" onClick={remove}>Убрать чек</Button>}
       </Stack>
       {!status.loading && !available && <Typography variant="body2" color="text.secondary" data-testid="receipt-unavailable">{unavailableHint}</Typography>}

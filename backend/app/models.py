@@ -36,7 +36,8 @@ class Role(str, enum.Enum):
 
 
 def _enum(e: type[enum.Enum]) -> Enum:
-    # Строковый столбец + CHECK вместо нативного ENUM: проще менять набор значений.
+    # Строковый столбец VARCHAR(20) вместо нативного ENUM, без CHECK-ограничения в БД:
+    # допустимые значения проверяют перечисления Python и схемы Pydantic.
     return Enum(e, native_enum=False, length=20, values_callable=lambda x: [m.value for m in x])
 
 

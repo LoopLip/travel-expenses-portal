@@ -10,7 +10,7 @@ import { categoryLabel, expenseApi, expenseCategories } from '@/entities/expense
 import { usePermissions } from '@/entities/session'
 import type { ExpenseCategory } from '@/entities/expense'
 import { tripApi } from '@/entities/trip'
-import { DeleteExpenseButton, EditExpenseButton, ExpenseDialog } from '@/features/expense-actions'
+import { DeleteExpenseButton, EditExpenseButton, ExpenseDialog, OpenReceiptButton } from '@/features/expense-actions'
 import { formatDate, formatMoney, useDebouncedValue, useQuery } from '@/shared/lib'
 import { FadeRow, PageHeader, QueryBoundary } from '@/shared/ui'
 
@@ -82,7 +82,7 @@ export default function ExpensesPage() {
                           <TableCell>{categoryLabel[e.category]}</TableCell>
                           <TableCell><Chip size="small" label={e.receipt_url ? 'Есть' : 'Нет'} color={e.receipt_url ? 'success' : 'warning'} variant="outlined" /></TableCell>
                           <TableCell align="right">{formatMoney(e.amount)}</TableCell>
-                          <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>{allow.writeExpense() && <><EditExpenseButton expense={e} /><DeleteExpenseButton expense={e} /></>}</TableCell>
+                          <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}><OpenReceiptButton expense={e} />{allow.writeExpense() && <><EditExpenseButton expense={e} /><DeleteExpenseButton expense={e} /></>}</TableCell>
                         </TableRow>
                       </FadeRow>
                     ))}

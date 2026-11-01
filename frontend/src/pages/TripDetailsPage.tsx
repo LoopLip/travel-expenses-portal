@@ -13,7 +13,7 @@ import { usePermissions, usersApi } from '@/entities/session'
 import { categoryLabel, expenseApi } from '@/entities/expense'
 import { TripStatusChip, tripApi } from '@/entities/trip'
 import { AdvanceRequestDialog, AdvanceStatusMenu, DeleteAdvanceButton, EditAdvanceButton, advanceLimitError } from '@/features/advance-actions'
-import { DeleteExpenseButton, EditExpenseButton, ExpenseDialog } from '@/features/expense-actions'
+import { DeleteExpenseButton, EditExpenseButton, ExpenseDialog, OpenReceiptButton } from '@/features/expense-actions'
 import { DeleteTripButton } from '@/features/trip-delete'
 import { TripStatusMenu } from '@/features/trip-status'
 import { ApiError } from '@/shared/api'
@@ -137,7 +137,7 @@ export default function TripDetailsPage() {
                               <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexShrink: 0 }}>
                                 {e.receipt_url ? <Chip size="small" color="success" variant="outlined" label="Чек" /> : <Chip size="small" color="warning" variant="outlined" label="Без чека" />}
                                 <Typography sx={{ minWidth: 88, textAlign: 'right' }}>{formatMoney(e.amount)}</Typography>
-                                {allow.writeExpense() && <><EditExpenseButton expense={e} /><DeleteExpenseButton expense={e} /></>}
+                                <OpenReceiptButton expense={e} />{allow.writeExpense() && <><EditExpenseButton expense={e} /><DeleteExpenseButton expense={e} /></>}
                               </Stack>
                             </ListItem>
                           </FadeRow>

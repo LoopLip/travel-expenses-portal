@@ -198,15 +198,20 @@ let tripId = 0
     assert(new URL(page.url()).pathname === '/trips', 'ожидали возврат на /trips')
   })
   await step('Поиск и фильтр по статусу выполняет сервер (параметры q и status в запросе)', async () => {
-    const urls = []
-    page.on('request', (r) => { if (r.url().startsWith(`${API}/trips?`)) urls.push(r.url()) })
+    const tripsRequest = (check) => page.waitForRequest((r) => r.url().startsWith(`${API}/trips?`) && check(new URL(r.url()).searchParams))
+    // поиск уходит на сервер после паузы во вводе (300 мс), статус — сразу; ждём именно такие запросы
+    const searched = tripsRequest((q) => q.get('q') === stamp)
     await page.getByLabel('Поиск').fill(stamp)
+    await searched
     await rows(page, 'trip-row', tripName).waitFor()
+    const approved = tripsRequest((q) => q.get('q') === stamp && q.get('status') === 'approved')
     await page.getByRole('button', { name: 'Согласована' }).click()
+    await approved
     await page.getByText('Ничего не найдено').waitFor()
+    const pending = tripsRequest((q) => q.get('q') === stamp && q.get('status') === 'pending')
     await page.getByRole('button', { name: 'На согласовании' }).click()
+    await pending
     await rows(page, 'trip-row', tripName).waitFor()
-    assert(urls.some((u) => u.includes(`q=${stamp}`) && u.includes('status=pending')), 'фильтр не ушёл на сервер: ' + urls.at(-1))
     assert(await rows(page, 'trip-row', tripName).getByText(fresh.name).count() === 1, 'в списке нет имени сотрудника')
   })
   await step('Руководитель согласует командировку сотрудника', async () => {

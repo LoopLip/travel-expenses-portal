@@ -3,12 +3,14 @@ import { Button, Card, CardContent, Grid, List, ListItem, ListItemText, Typograp
 import AddIcon from '@mui/icons-material/Add'
 import { advanceApi } from '@/entities/advance'
 import { expenseApi } from '@/entities/expense'
+import { usePermissions } from '@/entities/session'
 import { TripStatusChip, tripApi } from '@/entities/trip'
 import { AnimatedBar, loadBudgetUsage } from '@/features/budget-usage'
 import { formatDate, formatMoney, fromKopecks, sumKopecks, todayIso, useQuery } from '@/shared/lib'
 import { EmptyState, PageHeader, QueryBoundary } from '@/shared/ui'
 
 export default function DashboardPage() {
+  const allow = usePermissions()
   const query = useQuery(async (signal) => {
     const [trips, advances, expenses, budgets] = await Promise.all([
       tripApi.list({}, signal), advanceApi.list({}, signal), expenseApi.list({}, signal), loadBudgetUsage(signal),
@@ -21,13 +23,13 @@ export default function DashboardPage() {
       <PageHeader
         title="Обзор"
         subtitle="Сводка по командировкам, авансам и бюджетам"
-        action={<Button component={RouterLink} to="/trips/new" variant="contained" startIcon={<AddIcon />}>Новая заявка</Button>}
+        action={allow.createTrip() ? <Button component={RouterLink} to="/trips/new" variant="contained" startIcon={<AddIcon />}>Новая заявка</Button> : undefined}
       />
       <QueryBoundary
         query={query}
         skeletonRows={5}
         isEmpty={(d) => d.trips.length === 0 && d.budgets.length === 0}
-        empty={{ title: 'Данных пока нет', description: 'Создайте первую командировку, и здесь появится сводка.', action: <Button component={RouterLink} to="/trips/new" variant="contained">Новая заявка</Button> }}
+        empty={{ title: 'Данных пока нет', description: 'Когда появятся командировки и бюджеты, здесь будет сводка.', action: allow.createTrip() ? <Button component={RouterLink} to="/trips/new" variant="contained">Новая заявка</Button> : undefined }}
       >
         {({ trips, advances, expenses, budgets }) => {
           const upcoming = trips

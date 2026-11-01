@@ -12,7 +12,7 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
 import PaymentsIcon from '@mui/icons-material/Payments'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import PeopleIcon from '@mui/icons-material/People'
-import { isStaff, useSession } from '@/entities/session'
+import { usePermissions } from '@/entities/session'
 import { UserMenu } from '@/features/user-menu'
 import { DemoControls } from '@/features/demo-controls'
 import { useMotionTimeout } from '@/shared/lib'
@@ -34,8 +34,8 @@ export default function Layout() {
   const [open, setOpen] = useState(false)
   const { pathname } = useLocation()
   const motion = useMotionTimeout(250)
-  const { user } = useSession()
-  const items = navItems.filter((i) => !i.staffOnly || (user && isStaff(user.role)))
+  const allow = usePermissions()
+  const items = navItems.filter((i) => !i.staffOnly || allow.viewUsers())
 
   const isActive = (to: string, end?: boolean) => (end ? pathname === to : pathname.startsWith(to))
 

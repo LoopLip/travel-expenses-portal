@@ -7,6 +7,7 @@ import {
 import AddIcon from '@mui/icons-material/Add'
 import SearchIcon from '@mui/icons-material/Search'
 import { categoryLabel, expenseApi, expenseCategories } from '@/entities/expense'
+import { usePermissions } from '@/entities/session'
 import type { ExpenseCategory } from '@/entities/expense'
 import { tripApi } from '@/entities/trip'
 import { DeleteExpenseButton, ExpenseDialog } from '@/features/expense-actions'
@@ -17,6 +18,7 @@ export default function ExpensesPage() {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<'all' | ExpenseCategory>('all')
   const [open, setOpen] = useState(false)
+  const allow = usePermissions()
   const q = useDebouncedValue(search.trim())
   const filtered = category !== 'all' || q !== ''
   const query = useQuery(
@@ -30,16 +32,17 @@ export default function ExpensesPage() {
     },
     [category, q],
   )
-  const addButton = <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)}>Добавить расход</Button>
+  // Бухгалтер расходы только просматривает
+  const addButton = allow.writeExpense() ? <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)}>Добавить расход</Button> : undefined
 
   return (
     <>
-      <PageHeader title="Расходы" subtitle="Расходы по командировкам" action={
+      <PageHeader title="Расходы" subtitle="Расходы по командировкам" action={addButton && (
         <Stack direction="row" spacing={1}>
           <Button component={RouterLink} to="/expenses/new">Со страницы чека</Button>
           {addButton}
         </Stack>
-      } />
+      )} />
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
         <TextField size="small" label="Поиск" placeholder="Описание расхода" value={search} onChange={(e) => setSearch(e.target.value)}
           slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> } }} sx={{ minWidth: 260 }} />
@@ -79,7 +82,7 @@ export default function ExpensesPage() {
                           <TableCell>{categoryLabel[e.category]}</TableCell>
                           <TableCell><Chip size="small" label={e.receipt_url ? 'Есть' : 'Нет'} color={e.receipt_url ? 'success' : 'warning'} variant="outlined" /></TableCell>
                           <TableCell align="right">{formatMoney(e.amount)}</TableCell>
-                          <TableCell align="right"><DeleteExpenseButton expense={e} /></TableCell>
+                          <TableCell align="right">{allow.writeExpense() && <DeleteExpenseButton expense={e} />}</TableCell>
                         </TableRow>
                       </FadeRow>
                     ))}

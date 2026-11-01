@@ -1,10 +1,10 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { TransitionGroup } from 'react-transition-group'
 import { Button, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import { isStaff, useSession, usersApi } from '@/entities/session'
+import { isStaff, usePermissions, useSession, usersApi } from '@/entities/session'
 import { TripStatusChip, tripApi } from '@/entities/trip'
 import { DeleteTripButton } from '@/features/trip-delete'
 import { TripFilters, initialTripFilter, isFilterActive, toTripListFilter } from '@/features/trip-filter'
@@ -17,6 +17,7 @@ export default function TripsPage() {
   const navigate = useNavigate()
   const { user } = useSession()
   const staff = Boolean(user && isStaff(user.role))
+  const allow = usePermissions()
   const query = useQuery(
     async (signal) => {
       // Фильтр по статусу и поиск выполняет сервер (GET /trips?status=&q=)
@@ -28,7 +29,8 @@ export default function TripsPage() {
     },
     [filter.status, search, staff],
   )
-  const newButton = <Button component={RouterLink} to="/trips/new" variant="contained" startIcon={<AddIcon />}>Новая заявка</Button>
+  // Бухгалтер командировки не создаёт и не изменяет — кнопок у него нет
+  const newButton = allow.createTrip() ? <Button component={RouterLink} to="/trips/new" variant="contained" startIcon={<AddIcon />}>Новая заявка</Button> : undefined
 
   return (
     <>
@@ -68,13 +70,17 @@ export default function TripsPage() {
                           <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatDate(t.start_date)} — {formatDate(t.end_date)}</TableCell>
                           <TableCell align="right">{formatMoney(t.planned_amount)}</TableCell>
                           <TableCell><TripStatusChip status={t.status} /></TableCell>
-                          <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                            <Tooltip title="Редактировать">
-                              <IconButton size="small" aria-label="Редактировать" onClick={(e) => { e.stopPropagation(); navigate(`/trips/${t.id}/edit`) }}>
-                                <EditOutlinedIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <DeleteTripButton trip={t} />
+                        <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                            {allow.editTrip(t) && (
+                              <>
+                                <Tooltip title="Редактировать">
+                                  <IconButton size="small" aria-label="Редактировать" onClick={(e) => { e.stopPropagation(); navigate(`/trips/${t.id}/edit`) }}>
+                                    <EditOutlinedIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                                <DeleteTripButton trip={t} />
+                              </>
+                            )}
                           </TableCell>
                         </TableRow>
                       </FadeRow>

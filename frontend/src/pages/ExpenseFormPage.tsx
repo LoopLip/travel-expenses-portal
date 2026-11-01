@@ -2,15 +2,20 @@ import { useNavigate } from 'react-router-dom'
 import { Card, CardContent } from '@mui/material'
 import { tripApi } from '@/entities/trip'
 import { ExpenseForm } from '@/features/expense-actions'
+import { usePermissions } from '@/entities/session'
 import { useQuery } from '@/shared/lib'
-import { PageHeader, QueryBoundary } from '@/shared/ui'
+import { ErrorState, PageHeader, QueryBoundary } from '@/shared/ui'
 
 export default function ExpenseFormPage() {
   const navigate = useNavigate()
   const trips = useQuery((signal) => tripApi.list({}, signal))
+  const allow = usePermissions()
   return (
     <>
       <PageHeader title="Новый расход" subtitle="Загрузите фото чека — сумма и дата подставятся автоматически" />
+      {!allow.writeExpense() ? (
+        <ErrorState title="Доступ запрещён" message="Недостаточно прав: бухгалтер расходы только просматривает." />
+      ) : (
       <QueryBoundary query={trips} empty={{ title: 'Нет командировок', description: 'Сначала создайте командировку, к которой относится расход.' }} skeletonRows={5}>
         {(list) => (
           <Card><CardContent>
@@ -22,6 +27,7 @@ export default function ExpenseFormPage() {
           </CardContent></Card>
         )}
       </QueryBoundary>
+      )}
     </>
   )
 }

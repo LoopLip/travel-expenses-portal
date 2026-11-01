@@ -9,7 +9,7 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { AdvanceStatusChip, advanceApi } from '@/entities/advance'
 import { budgetApi } from '@/entities/budget'
-import { useSession, usersApi } from '@/entities/session'
+import { usePermissions, usersApi } from '@/entities/session'
 import { categoryLabel, expenseApi } from '@/entities/expense'
 import { TripStatusChip, tripApi } from '@/entities/trip'
 import { AdvanceRequestDialog, AdvanceStatusMenu, DeleteAdvanceButton, advanceLimitError } from '@/features/advance-actions'
@@ -27,7 +27,7 @@ export default function TripDetailsPage() {
   const { id } = useParams()
   const tripId = Number(id)
   const navigate = useNavigate()
-  const role = useSession().user?.role
+  const allow = usePermissions()
   const [tab, setTab] = useState<Tab>('advances')
   const [more, setMore] = useState(false)
   const [advanceOpen, setAdvanceOpen] = useState(false)
@@ -68,9 +68,13 @@ export default function TripDetailsPage() {
                 action={
                   <Stack direction="row" spacing={1} useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
                     <TripStatusChip status={trip.status} />
-                    {role === 'manager' && <TripStatusMenu trip={trip} />}
-                    <Button size="small" startIcon={<EditOutlinedIcon />} component={RouterLink} to={`/trips/${trip.id}/edit`}>Изменить</Button>
-                    <DeleteTripButton trip={trip} onDone={() => navigate('/trips')} />
+                    <TripStatusMenu trip={trip} />
+                    {allow.editTrip(trip) && (
+                      <>
+                        <Button size="small" startIcon={<EditOutlinedIcon />} component={RouterLink} to={`/trips/${trip.id}/edit`}>Изменить</Button>
+                        <DeleteTripButton trip={trip} onDone={() => navigate('/trips')} />
+                      </>
+                    )}
                   </Stack>
                 }
               />
@@ -102,7 +106,7 @@ export default function TripDetailsPage() {
                         {advances.map((a) => (
                           <FadeRow key={a.id}>
                             <ListItem divider disableGutters data-testid="advance-item"
-                              secondaryAction={<Stack direction="row" sx={{ alignItems: 'center' }}>{role === 'accountant' && <AdvanceStatusMenu advance={a} />}<DeleteAdvanceButton advance={a} /></Stack>}>
+                              secondaryAction={<Stack direction="row" sx={{ alignItems: 'center' }}>{allow.changeAdvanceStatus() && <AdvanceStatusMenu advance={a} />}<DeleteAdvanceButton advance={a} /></Stack>}>
                               <ListItemText primary={formatMoney(a.amount)} secondary={`Запрос от ${formatDate(a.requested_at)}`} sx={{ pr: 18 }} />
                               <AdvanceStatusChip status={a.status} />
                             </ListItem>
@@ -116,7 +120,7 @@ export default function TripDetailsPage() {
 
               {tab === 'expenses' && (
                 <Box>
-                  <Button variant="contained" size="small" sx={{ mb: 2 }} onClick={() => setExpenseOpen(true)}>Добавить расход</Button>
+                  {allow.writeExpense() && <Button variant="contained" size="small" sx={{ mb: 2 }} onClick={() => setExpenseOpen(true)}>Добавить расход</Button>}
                   {expenses.length === 0 ? (
                     <EmptyState title="Расходов пока нет" description="Добавьте расход и приложите фото чека." />
                   ) : (
@@ -125,7 +129,7 @@ export default function TripDetailsPage() {
                         {expenses.map((e) => (
                           <FadeRow key={e.id}>
                             <ListItem divider disableGutters data-testid="expense-item"
-                              secondaryAction={<Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}><Typography>{formatMoney(e.amount)}</Typography><DeleteExpenseButton expense={e} /></Stack>}>
+                              secondaryAction={<Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}><Typography>{formatMoney(e.amount)}</Typography>{allow.writeExpense() && <DeleteExpenseButton expense={e} />}</Stack>}>
                               <ListItemText primary={e.description} secondary={`${categoryLabel[e.category]} · ${formatDate(e.expense_date)}`} sx={{ pr: 14 }} />
                               {e.receipt_url ? <Chip size="small" color="success" variant="outlined" label="Чек" /> : <Chip size="small" color="warning" variant="outlined" label="Без чека" />}
                             </ListItem>

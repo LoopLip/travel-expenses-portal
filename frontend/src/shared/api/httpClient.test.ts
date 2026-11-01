@@ -194,7 +194,7 @@ describe('HTTP-клиент: загрузка файла (FormData) и полу�
     const fetchFn = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
       const path = String(url).replace('http://api', '')
       if (path === '/auth/refresh') return json(200, { access_token: 'fresh', token_type: 'bearer', expires_in: 900 })
-      const auth = (init?.headers as Record<string, string>).Authorization
+      const auth = (init?.headers as Record<string, string> | undefined)?.Authorization
       seen.push({ auth, body: init?.body })
       return auth === 'Bearer fresh' ? json(200, { receipt_url: 'receipts/x.png' }) : json(401, { detail: 'Срок действия токена истёк' })
     })

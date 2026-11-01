@@ -12,7 +12,7 @@ export default function ExpenseFormPage() {
   const allow = usePermissions()
   return (
     <>
-      <PageHeader title="Новый расход" subtitle="Загрузите фото чека — сумма и дата подставятся автоматически" />
+      <PageHeader title="Новый расход" subtitle="Загрузите фото чека: сумма и дата подставятся из распознанного текста, проверьте их перед сохранением" />
       {!allow.writeExpense() ? (
         <ErrorState title="Доступ запрещён" message="Недостаточно прав: бухгалтер расходы только просматривает." />
       ) : (

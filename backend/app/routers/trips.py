@@ -15,12 +15,13 @@ def list_trips(
     status: models.TripStatus | None = None,
     user_id: int | None = None,
     budget_id: int | None = None,
+    q: str | None = Query(None, max_length=100, description="поиск по подстроке без учёта регистра"),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
 ):
     # Сотрудник всегда видит только свои командировки, параметр user_id для него игнорируется.
     owner = permissions.owner_filter(actor)
-    return crud.list_trips(db, skip, limit, status, owner if owner is not None else user_id, budget_id)
+    return crud.list_trips(db, skip, limit, status, owner if owner is not None else user_id, budget_id, q)
 
 
 @router.post("", response_model=schemas.TripOut, status_code=status.HTTP_201_CREATED)

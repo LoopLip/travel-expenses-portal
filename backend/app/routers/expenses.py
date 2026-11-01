@@ -2,7 +2,7 @@
 
 from app import crud, permissions, schemas
 from app.deps import DB, CurrentUser, get_current_user
-from app.models import Role
+from app.models import ExpenseCategory, Role
 
 router = APIRouter(prefix="/expenses", tags=["expenses"], dependencies=[Depends(get_current_user)])
 EXPENSE_WRITERS = (Role.employee, Role.manager)  # бухгалтер расходы только просматривает
@@ -10,9 +10,15 @@ EXPENSE_WRITERS = (Role.employee, Role.manager)  # бухгалтер расхо
 
 @router.get("", response_model=list[schemas.ExpenseOut])
 def list_expenses(
-    db: DB, actor: CurrentUser, trip_id: int | None = None, skip: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=500)
+    db: DB,
+    actor: CurrentUser,
+    trip_id: int | None = None,
+    category: ExpenseCategory | None = None,
+    q: str | None = Query(None, max_length=100, description="поиск по подстроке без учёта регистра"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
 ):
-    return crud.list_expenses(db, skip, limit, trip_id, permissions.owner_filter(actor))
+    return crud.list_expenses(db, skip, limit, trip_id, permissions.owner_filter(actor), category, q)
 
 
 @router.post("", response_model=schemas.ExpenseOut, status_code=status.HTTP_201_CREATED)

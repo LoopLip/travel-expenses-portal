@@ -2,16 +2,21 @@
 
 from app import crud, permissions, schemas
 from app.deps import DB, CurrentUser, get_current_user
-from app.models import Role
+from app.models import AdvanceStatus, Role
 
 router = APIRouter(prefix="/advances", tags=["advances"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("", response_model=list[schemas.AdvanceOut])
 def list_advances(
-    db: DB, actor: CurrentUser, trip_id: int | None = None, skip: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=500)
+    db: DB,
+    actor: CurrentUser,
+    trip_id: int | None = None,
+    status: AdvanceStatus | None = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
 ):
-    return crud.list_advances(db, skip, limit, trip_id, permissions.owner_filter(actor))
+    return crud.list_advances(db, skip, limit, trip_id, permissions.owner_filter(actor), status)
 
 
 @router.post("", response_model=schemas.AdvanceOut, status_code=status.HTTP_201_CREATED)

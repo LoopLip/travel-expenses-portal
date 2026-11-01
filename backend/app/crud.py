@@ -2,7 +2,7 @@
 from decimal import Decimal
 from typing import Any, TypeVar
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -30,6 +30,13 @@ class ForbiddenError(Exception):
 
 
 T = TypeVar("T")
+CENT = Decimal("0.01")
+
+
+def _contains(text: str) -> str:
+    """Шаблон ILIKE «содержит»: спецсимволы % и _ из строки поиска экранируются."""
+    escaped = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
 
 
 def _get_or_404(db: Session, model: type[T], obj_id: int, label: str) -> T:
@@ -145,7 +152,7 @@ def budget_summary(db: Session, budget_id: int) -> schemas.BudgetSummary:
             models.Trip.status.not_in([models.TripStatus.draft, models.TripStatus.rejected]),
         )
     )
-    reserved = Decimal(reserved)
+    reserved = Decimal(reserved).quantize(CENT)  # SUM по пустому набору даёт 0 без копеек: приводим к виду 0.00
     return schemas.BudgetSummary(
         **schemas.BudgetOut.model_validate(budget).model_dump(),
         reserved=reserved,
@@ -161,8 +168,18 @@ def list_trips(
     status: models.TripStatus | None = None,
     user_id: int | None = None,
     budget_id: int | None = None,
+    q: str | None = None,
 ) -> list[models.Trip]:
     stmt = select(models.Trip).order_by(models.Trip.id).offset(skip).limit(limit)
+    if q:  # поиск по направлению, цели и ФИО сотрудника
+        pattern = _contains(q)
+        stmt = stmt.join(models.User, models.User.id == models.Trip.user_id).where(
+            or_(
+                models.Trip.destination.ilike(pattern),
+                models.Trip.purpose.ilike(pattern),
+                models.User.full_name.ilike(pattern),
+            )
+        )
     if status is not None:
         stmt = stmt.where(models.Trip.status == status)
     if user_id is not None:
@@ -213,11 +230,18 @@ def delete_trip(db: Session, trip_id: int) -> None:
 
 # ---------- advances ----------
 def list_advances(
-    db: Session, skip: int, limit: int, trip_id: int | None = None, owner_id: int | None = None
+    db: Session,
+    skip: int,
+    limit: int,
+    trip_id: int | None = None,
+    owner_id: int | None = None,
+    status: models.AdvanceStatus | None = None,
 ) -> list[models.Advance]:
     stmt = select(models.Advance).order_by(models.Advance.id).offset(skip).limit(limit)
     if trip_id is not None:
         stmt = stmt.where(models.Advance.trip_id == trip_id)
+    if status is not None:
+        stmt = stmt.where(models.Advance.status == status)
     if owner_id is not None:  # только авансы по командировкам этого сотрудника
         stmt = stmt.join(models.Trip, models.Trip.id == models.Advance.trip_id).where(models.Trip.user_id == owner_id)
     return list(db.scalars(stmt))
@@ -263,11 +287,21 @@ def delete_advance(db: Session, advance_id: int) -> None:
 
 # ---------- expenses ----------
 def list_expenses(
-    db: Session, skip: int, limit: int, trip_id: int | None = None, owner_id: int | None = None
+    db: Session,
+    skip: int,
+    limit: int,
+    trip_id: int | None = None,
+    owner_id: int | None = None,
+    category: models.ExpenseCategory | None = None,
+    q: str | None = None,
 ) -> list[models.Expense]:
     stmt = select(models.Expense).order_by(models.Expense.id).offset(skip).limit(limit)
     if trip_id is not None:
         stmt = stmt.where(models.Expense.trip_id == trip_id)
+    if category is not None:
+        stmt = stmt.where(models.Expense.category == category)
+    if q:
+        stmt = stmt.where(models.Expense.description.ilike(_contains(q)))
     if owner_id is not None:
         stmt = stmt.join(models.Trip, models.Trip.id == models.Expense.trip_id).where(models.Trip.user_id == owner_id)
     return list(db.scalars(stmt))

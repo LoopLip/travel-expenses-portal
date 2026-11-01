@@ -268,4 +268,34 @@ for (const [viewport, suffix] of [[DESKTOP, 'desktop'], [MOBILE, 'mobile']]) {
   await m.ctx.close()
 }
 
+// ---------- распознавание чека (сотрудник) ----------
+// С Tesseract на сервере: форма до загрузки, после распознавания, «не распознано». Без него: «распознавание недоступно».
+// Расход не сохраняется, демо-данные не меняются.
+{
+  const fixtures = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../backend/tests/fixtures')
+  const { ctx, page } = await open()
+  await login(page, demo.employee)
+  await tripId(page, 'Екатеринбург')
+  const openDialog = async () => {
+    await page.getByRole('tab', { name: /Расходы/ }).click()
+    await page.getByRole('button', { name: 'Добавить расход' }).click()
+    await page.waitForFunction(() => document.querySelector('[data-testid="receipt-input"]')?.disabled === false || document.querySelector('[data-testid="receipt-unavailable"]'))
+  }
+  await openDialog()
+  if (await page.getByTestId('receipt-unavailable').count()) {
+    await shot(page, 'receipt-unavailable-desktop.png', false)
+  } else {
+    await shot(page, 'receipt-form-desktop.png', false)
+    await page.getByTestId('receipt-input').setInputFiles(path.join(fixtures, 'receipt_clean.png'))
+    await page.getByTestId('receipt-outcome').waitFor({ timeout: 30000 })
+    await shot(page, 'receipt-recognized-desktop.png', false)
+    await page.getByRole('dialog').getByRole('button', { name: 'Отмена' }).click()
+    await openDialog()
+    await page.getByTestId('receipt-input').setInputFiles(path.join(fixtures, 'receipt_no_total.png'))
+    await page.getByTestId('receipt-outcome').waitFor({ timeout: 30000 })
+    await shot(page, 'receipt-not-recognized-desktop.png', false)
+  }
+  await ctx.close()
+}
+
 await browser.close()

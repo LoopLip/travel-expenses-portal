@@ -81,3 +81,13 @@ def test_garbage_is_not_recognized():
 
 def test_ocr_fix_only_inside_numbers():
     assert fix_ocr_digits("ООО Sole 1O5,OO") == "ООО Sole 105,00"
+
+
+def test_rules_on_text_of_synthetic_receipts():
+    """Текст каждого синтетического чека из tests/fixtures разбирается правильно (таблица точности в README)."""
+    from tests.fixtures.make_receipts import RECEIPTS
+
+    for name, (lines, _, amount, day) in RECEIPTS.items():
+        data = parse_receipt("\n".join(lines), TODAY)
+        assert data.amount == (Decimal(amount) if amount else None), name
+        assert data.expense_date == day, name

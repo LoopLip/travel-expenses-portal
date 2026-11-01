@@ -34,6 +34,9 @@
 | Бюджеты `/budgets` | Просмотр с использованием | `GET /budgets`, `GET /budgets/{id}/summary` | все вошедшие |
 | Бюджеты | Создать / изменить / удалить | `POST /budgets`, `PATCH /budgets/{id}`, `DELETE /budgets/{id}` | Р, Б |
 | Сотрудники `/users` | Список | `GET /users?limit=500` | Р, Б; С — 403 |
+| Форма расхода | Узнать, доступно ли распознавание | `GET /receipts/status` → `{available, languages}` | все вошедшие |
+| Форма расхода | Распознать фото чека | `POST /receipts/recognize` (multipart, поле `file`) → `{receipt_url, amount, expense_date, recognized, message}` | С и Р; Б — 403 |
+| Карточка / Расходы | Открыть чек | `GET /expenses/{id}/receipt` (файл, запрашивается с токеном как blob) | кто видит расход: С (свои, чужой — 404), Р, Б |
 
 Удаление командировки на сервере каскадно удаляет её авансы и расходы (`ON DELETE CASCADE`). Удаление бюджета, к которому привязаны командировки, запрещено (409).
 
@@ -88,3 +91,10 @@
 ### CORS и cookie
 - `CORS_ORIGINS` по умолчанию разрешает `http://localhost:5173` и `http://127.0.0.1:5173`, `allow_credentials=True`, методы `GET, POST, PATCH, DELETE, OPTIONS`, заголовки `Authorization, Content-Type` (проверено preflight-запросом `OPTIONS /trips`).
 - Refresh-токен — HttpOnly-cookie с `SameSite=Lax` и `Path=/auth`. `localhost` и `127.0.0.1` браузер считает **разными сайтами**: если страница открыта на одном хосте, а API указан на другом, cookie не отправится и после F5 сессия не восстановится. Поэтому `VITE_API_URL` по умолчанию не задаётся, и frontend обращается к API на том же хосте, что и страница (порт 8000).
+
+### Распознавание чека (тег `lab-5-ocr`)
+- **Загрузка** — `multipart/form-data` с полем `file`. Frontend передаёт `FormData` в общий `httpClient` и **не** задаёт `Content-Type` вручную: браузер сам ставит его с границей (boundary). После 401 загрузка повторяется с тем же `FormData` уже с новым токеном.
+- **Ответ** `POST /receipts/recognize`: `amount` — строка с двумя знаками («1234.50») или `null`, `expense_date` — «YYYY-MM-DD» или `null`, `receipt_url` — «receipts/<uuid>.<ext>», `recognized`, `message` на русском. Маппер `toReceiptRecognition` проверяет ответ схемой Zod, как и остальные. Распознанный текст сервер не возвращает.
+- **Коды**: 413 (файл больше `MAX_RECEIPT_MB`), 415 (не JPEG/PNG/WEBP — проверяется реальный формат, а не только заголовок), 422 (не изображение), 503 (Tesseract недоступен) — все со строкой `detail` на русском, frontend показывает её под кнопкой загрузки. «Ничего не найдено» — 200 и `recognized: false`.
+- **Файл чека** — `GET /expenses/{id}/receipt` возвращает изображение, поэтому `httpClient` получает его как `blob` (`responseType: 'blob'`) и открывает через `URL.createObjectURL`: обычная ссылка `<a href>` не передала бы заголовок `Authorization`. 404 показывается как «Файл чека недоступен».
+- **Совместимость**: `receipt_url` остался свободной строкой до 500 символов, поэтому старые записи и `seed-demo` работают. Кнопка «Открыть чек» появляется, только если ссылка имеет вид `receipts/<32 hex>.(jpg|jpeg|png|webp)`; сервер проверяет то же самое.

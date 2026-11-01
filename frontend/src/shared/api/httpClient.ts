@@ -13,6 +13,10 @@ export interface RequestOptions {
   json?: unknown
   /** Тело формы (application/x-www-form-urlencoded), например для входа. */
   form?: Record<string, string>
+  /** Тело multipart/form-data (загрузка файла). FormData можно отправить повторно — повтор после обновления токена работает. */
+  formData?: FormData
+  /** blob — ответ-файл (например, изображение чека) вместо JSON. */
+  responseType?: 'json' | 'blob'
   /** false — запрос без токена и без попытки обновления (вход, регистрация, обновление токена). */
   auth?: boolean
   /** Параметры строки запроса; пустые значения (undefined, null, '') не отправляются. */
@@ -90,6 +94,9 @@ export function createHttpClient({ baseUrl, fetchFn, tokenStore }: HttpClientDep
     } else if (opts.form) {
       headers['Content-Type'] = 'application/x-www-form-urlencoded'
       body = new URLSearchParams(opts.form).toString()
+    } else if (opts.formData) {
+      // Content-Type не задаём: браузер сам выставит multipart/form-data с границей (boundary)
+      body = opts.formData
     }
     const token = tokenStore.get()
     if (opts.auth !== false && token) headers.Authorization = `Bearer ${token}`
@@ -138,6 +145,7 @@ export function createHttpClient({ baseUrl, fetchFn, tokenStore }: HttpClientDep
     }
     if (!res.ok) throw await readError(res)
     if (res.status === 204) return undefined as T
+    if (opts.responseType === 'blob') return (await res.blob()) as T
     return (await res.json()) as T
   }
 

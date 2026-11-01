@@ -176,3 +176,46 @@ describe('HTTP-клиент: форматы ошибок backend и параме
     expect(buildQuery({ q: 'Санкт Петербург' })).toBe('?q=%D0%A1%D0%B0%D0%BD%D0%BA%D1%82+%D0%9F%D0%B5%D1%82%D0%B5%D1%80%D0%B1%D1%83%D1%80%D0%B3')
   })
 })
+
+describe('HTTP-клиент: загрузка файла (FormData) и получение файла (blob)', () => {
+  it('FormData уходит как есть, Content-Type не задаётся вручную (его ставит браузер с boundary)', async () => {
+    const fetchFn = vi.fn(async () => json(200, { ok: true }))
+    const http = createHttpClient({ baseUrl: 'http://api', fetchFn: fetchFn as unknown as typeof fetch, tokenStore: memoryTokens('fresh') })
+    const form = new FormData()
+    form.append('file', new Blob(['x'], { type: 'image/png' }), 'check.png')
+    await http.request('/receipts/recognize', { method: 'POST', formData: form })
+    const init = (fetchFn.mock.calls[0] as unknown as [string, RequestInit])[1]
+    expect(init.body).toBe(form)
+    expect(init.headers).toEqual({ Authorization: 'Bearer fresh' })
+  })
+
+  it('при 401 токен обновляется и загрузка файла повторяется с тем же FormData', async () => {
+    const seen: Array<{ auth?: string; body: unknown }> = []
+    const fetchFn = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(url).replace('http://api', '')
+      if (path === '/auth/refresh') return json(200, { access_token: 'fresh', token_type: 'bearer', expires_in: 900 })
+      const auth = (init?.headers as Record<string, string>).Authorization
+      seen.push({ auth, body: init?.body })
+      return auth === 'Bearer fresh' ? json(200, { receipt_url: 'receipts/x.png' }) : json(401, { detail: 'Срок действия токена истёк' })
+    })
+    const http = createHttpClient({ baseUrl: 'http://api', fetchFn: fetchFn as unknown as typeof fetch, tokenStore: memoryTokens('stale') })
+    const form = new FormData()
+    form.append('file', new Blob(['x']), 'check.png')
+    await expect(http.request('/receipts/recognize', { method: 'POST', formData: form })).resolves.toEqual({ receipt_url: 'receipts/x.png' })
+    expect(seen.map((s) => s.auth)).toEqual(['Bearer stale', 'Bearer fresh'])
+    expect(seen[1].body).toBe(form)
+  })
+
+  it("responseType: 'blob' возвращает файл, а 404 — понятную ошибку", async () => {
+    const fetchFn = vi.fn(async (url: RequestInfo | URL) =>
+      String(url).endsWith('/1/receipt')
+        ? new Response(new Blob(['PNG'], { type: 'image/png' }), { status: 200, headers: { 'Content-Type': 'image/png' } })
+        : json(404, { detail: 'Файл чека недоступен' }),
+    )
+    const http = createHttpClient({ baseUrl: 'http://api', fetchFn: fetchFn as unknown as typeof fetch, tokenStore: memoryTokens('fresh') })
+    const blob = await http.request<Blob>('/expenses/1/receipt', { responseType: 'blob' })
+    expect(blob.type).toBe('image/png')
+    expect(await blob.text()).toBe('PNG')
+    await expect(http.request('/expenses/2/receipt', { responseType: 'blob' })).rejects.toMatchObject({ status: 404 })
+  })
+})
